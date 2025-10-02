@@ -41,8 +41,30 @@ class BitcoinClickerGame {
         // Mining hardware definitions (real-world USD prices)
         this.hardwareTypes = [
             {
-                id: 'cpu',
-                name: 'CPU Miner',
+                id: 'recycled_cpu',
+                name: 'Recycled CPU',
+                description: 'Pulled from a dusty server in a forgotten basement. Barely alive, but still ticking.',
+                subcategory: 'CPU',
+                baseCost: 10,
+                baseHashrate: 1,
+                basePower: 15,
+                costMultiplier: 1.05,
+                unlocked: true
+            },
+            {
+                id: 'celeron_g6900',
+                name: 'Celeron G6900',
+                description: 'The potato chip. Barely mines, but it’s cheap enough to throw in a junk rig.',
+                subcategory: 'CPU',
+                baseCost: 45,
+                baseHashrate: 6,
+                basePower: 40,
+                costMultiplier: 1.1,
+                unlocked: true
+            },
+            {
+                id: 'pentium_g7400',
+                name: 'Pentium Gold G7400',
                 description: 'Your trusty CPU. Slow but reliable.',
                 subcategory: 'CPU',
                 baseCost: 100,
@@ -50,6 +72,172 @@ class BitcoinClickerGame {
                 basePower: 50,
                 costMultiplier: 1.15,
                 unlocked: true
+            },
+            {
+                id: 'athlon_3000g',
+                name: 'Athlon 3000G',
+                description: 'The scrappy underdog. Cheap, cheerful, and just enough juice to boot your rig.',
+                subcategory: 'CPU',
+                baseCost: 150,
+                baseHashrate: 12,
+                basePower: 55,
+                costMultiplier: 1.15,
+                unlocked: true
+            },
+            {
+                id: 'apple_m2',
+                name: 'Apple M2',
+                description: 'Sleek and silent. Optimized for elegance, not brute force.',
+                subcategory: 'CPU',
+                baseCost: 200,
+                baseHashrate: 8,
+                basePower: 30,
+                costMultiplier: 1.15,
+                unlocked: true
+            },
+            {
+                id: 'core_i3_14100',
+                name: 'Core i3-14100',
+                description: 'The apprentice chip. Learns fast, works hard, but still needs a mentor.',
+                subcategory: 'CPU',
+                baseCost: 300,
+                baseHashrate: 18,
+                basePower: 65,
+                costMultiplier: 1.2,
+                unlocked: false,
+                requirement: { totalBTC: 0.05, hashPoints: 0 }
+            },
+            {
+                id: 'ryzen_3_5300g',
+                name: 'Ryzen 3 5300G',
+                description: 'The jack-of-all-trades. Modest power, built-in graphics, and a heart of silicon gold.',
+                subcategory: 'CPU',
+                baseCost: 400,
+                baseHashrate: 22,
+                basePower: 70,
+                costMultiplier: 1.2,
+                unlocked: false,
+                requirement: { totalBTC: 0.1, hashPoints: 0 }
+            },
+            {
+                id: 'apple_m2_pro',
+                name: 'Apple M2 Pro',
+                description: 'The artist’s muse. Paints pixels with precision, but avoids crypto chaos.',
+                subcategory: 'CPU',
+                baseCost: 600,
+                baseHashrate: 15,
+                basePower: 40,
+                costMultiplier: 1.2,
+                unlocked: false,
+                requirement: { totalBTC: 0.15, hashPoints: 0 }
+            },
+            {
+                id: 'core_i5_14400',
+                name: 'Core i5-14400',
+                description: 'Reliable mercenary. Handles most missions with ease, but not built for mining glory.',
+                subcategory: 'CPU',
+                baseCost: 800,
+                baseHashrate: 30,
+                basePower: 90,
+                costMultiplier: 1.25,
+                unlocked: false,
+                requirement: { totalBTC: 0.2, hashPoints: 0 }
+            },
+            {
+                id: 'ryzen_5_7600',
+                name: 'Ryzen 5 7600',
+                description: 'The silent assassin. Efficient, deadly in short bursts, and good at covert ops.',
+                subcategory: 'CPU',
+                baseCost: 1000,
+                baseHashrate: 35,
+                basePower: 85,
+                costMultiplier: 1.25,
+                unlocked: false,
+                requirement: { totalBTC: 0.3, hashPoints: 0 }
+            },
+            {
+                id: 'apple_m3',
+                name: 'Apple M3',
+                description: 'The philosopher chip. Thinks fast, sips power, and avoids blockchain warfare.',
+                subcategory: 'CPU',
+                baseCost: 1200,
+                baseHashrate: 20,
+                basePower: 35,
+                costMultiplier: 1.25,
+                unlocked: false,
+                requirement: { totalBTC: 0.4, hashPoints: 0 }
+            },
+            {
+                id: 'core_i7_14700k',
+                name: 'Core i7-14700K',
+                description: 'The battlefield general. Commands cores like troops—strong, strategic, and power-hungry.',
+                subcategory: 'CPU',
+                baseCost: 1500,
+                baseHashrate: 50,
+                basePower: 120,
+                costMultiplier: 1.3,
+                unlocked: false,
+                requirement: { totalBTC: 0.5, hashPoints: 0 }
+            },
+            {
+                id: 'ryzen_7_7800x3d',
+                name: 'Ryzen 7 7800X3D',
+                description: 'The gamer’s blade. Sharp, swift, and tuned for frame-perfect strikes.',
+                subcategory: 'CPU',
+                baseCost: 1800,
+                baseHashrate: 55,
+                basePower: 110,
+                costMultiplier: 1.3,
+                unlocked: false,
+                requirement: { totalBTC: 0.6, hashPoints: 0 }
+            },
+            {
+                id: 'apple_m3_pro',
+                name: 'Apple M3 Pro',
+                description: 'The virtuoso. Composes symphonies of code, but won’t touch crypto.',
+                subcategory: 'CPU',
+                baseCost: 2000,
+                baseHashrate: 25,
+                basePower: 45,
+                costMultiplier: 1.3,
+                unlocked: false,
+                requirement: { totalBTC: 0.75, hashPoints: 0 }
+            },
+            {
+                id: 'core_i9_14900k',
+                name: 'Core i9-14900K',
+                description: 'The war machine. Unleashes raw power, but guzzles watts like a mech in overdrive.',
+                subcategory: 'CPU',
+                baseCost: 2500,
+                baseHashrate: 70,
+                basePower: 150,
+                costMultiplier: 1.35,
+                unlocked: false,
+                requirement: { totalBTC: 1, hashPoints: 0 }
+            },
+            {
+                id: 'ryzen_9_9950x3d',
+                name: 'Ryzen 9 9950X3D',
+                description: 'The overlord chip. Dominates games, multitasks like a demigod, and mines with quiet menace.',
+                subcategory: 'CPU',
+                baseCost: 2800,
+                baseHashrate: 75,
+                basePower: 140,
+                costMultiplier: 1.35,
+                unlocked: false,
+                requirement: { totalBTC: 1.25, hashPoints: 0 }
+            },
+            {
+                id: 'apple_m3_max',
+                name: 'Apple M3 Max',
+                description: 'The architect of worlds. Builds empires in silence, but mining? That’s beneath its station.',
+                subcategory: 'CPU',
+                baseCost: 3000,
+                baseHashrate: 30,
+                basePower: 50,
+                costMultiplier: 1.35,
+                unlocked: false,
+                requirement: { totalBTC: 1.5, hashPoints: 0 }
             },
             {
                 id: 'gpu',
@@ -606,7 +794,7 @@ class BitcoinClickerGame {
             marketTrendTimer: 0,
             
             // Unlocks
-            unlockedHardware: ['cpu', 'gpu', 'asic_early'],
+            unlockedHardware: ['recycled_cpu', 'celeron_g6900', 'pentium_g7400', 'athlon_3000g', 'apple_m2', 'gpu', 'asic_early'],
             unlockedGenerators: ['city', 'solar', 'diesel'],
             unlockedUpgrades: ['click_power1', 'hash_efficiency'],
             
