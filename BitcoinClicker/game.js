@@ -2353,10 +2353,10 @@ class BlackMarket {
     }
 
     setupLoanProcessing() {
-        // Process loan interest every day (in-game)
+        // Process loan interest every 15 minutes (real time)
         setInterval(() => {
             this.processLoanInterest();
-        }, 60000); // Check every minute for demo purposes (change to longer for production)
+        }, 15000); // 15 seconds for demo, change to 900000 for 15 min in production
     }
 
     switchTab(tabName) {
@@ -2372,10 +2372,13 @@ class BlackMarket {
     }
 
     takeLoan(amount, interestRate) {
+        // Apply 15% upfront fee
+        const upfrontFee = 0.15;
+        const totalOwed = amount * (1 + upfrontFee);
         const loan = {
             id: Date.now(),
             principal: amount,
-            remaining: amount,
+            remaining: totalOwed,
             interestRate: interestRate,
             takenAt: Date.now(),
             lastInterestApplied: Date.now()
@@ -2386,7 +2389,7 @@ class BlackMarket {
 
         Utils.createNotification(
             'Loan Approved',
-            `You received $${amount.toLocaleString()}. Don't miss the payments...`,
+            `You received $${amount.toLocaleString()} but owe $${totalOwed.toLocaleString()} (15% fee).`,
             'warning'
         );
 
@@ -2395,18 +2398,19 @@ class BlackMarket {
 
     processLoanInterest() {
         const now = Date.now();
-        const dayInMs = 86400000; // 24 hours
+        const intervalMs = 900000; // 15 minutes
+        const interestRate = 0.10; // 10% per compounding
 
         this.game.gameState.loans.forEach(loan => {
             const timeSinceLastInterest = now - loan.lastInterestApplied;
-            if (timeSinceLastInterest >= dayInMs) {
-                const daysElapsed = Math.floor(timeSinceLastInterest / dayInMs);
-                loan.remaining *= Math.pow(1 + loan.interestRate, daysElapsed);
+            if (timeSinceLastInterest >= intervalMs) {
+                const intervalsElapsed = Math.floor(timeSinceLastInterest / intervalMs);
+                loan.remaining *= Math.pow(1 + interestRate, intervalsElapsed);
                 loan.lastInterestApplied = now;
 
                 Utils.createNotification(
                     'Loan Interest Applied',
-                    `Your debt grew by ${(loan.interestRate * 100).toFixed(0)}%. Now owing $${loan.remaining.toLocaleString(undefined, {maximumFractionDigits: 0})}`,
+                    `Your debt compounded by 10% every 15 min. Now owing $${loan.remaining.toLocaleString(undefined, {maximumFractionDigits: 0})}`,
                     'danger'
                 );
             }
@@ -2469,14 +2473,21 @@ class BlackMarket {
         }
 
         loansListEl.innerHTML = this.game.gameState.loans.map((loan, index) => {
-            const daysSinceTaken = Math.floor((Date.now() - loan.takenAt) / 86400000);
+            const minutesActive = Math.floor((Date.now() - loan.takenAt) / 60000);
+            const intervalMs = 900000; // 15 min
+            const now = Date.now();
+            const elapsed = now - loan.lastInterestApplied;
+            const nextCompoundMs = Math.max(0, intervalMs - elapsed);
+            const minLeft = Math.floor(nextCompoundMs / 60000);
+            const secLeft = Math.floor((nextCompoundMs % 60000) / 1000);
             return `
                 <div class="loan-item">
                     <div class="loan-info">
                         <p><strong>Principal:</strong> $${loan.principal.toLocaleString()}</p>
                         <p><strong>Remaining:</strong> $${loan.remaining.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
-                        <p><strong>Interest Rate:</strong> ${(loan.interestRate * 100).toFixed(0)}%/day</p>
-                        <p><strong>Days Active:</strong> ${daysSinceTaken}</p>
+                        <p><strong>Interest Rate:</strong> 10%/15min (compounded)</p>
+                        <p><strong>Minutes Active:</strong> ${minutesActive}</p>
+                        <p style="color:#ff8800;font-weight:bold;">Next compounding: ${minLeft}m ${secLeft}s</p>
                     </div>
                     <div class="loan-actions">
                         <input type="number" id="payment-${index}" placeholder="Payment amount" min="1" />
@@ -2486,5 +2497,22 @@ class BlackMarket {
                 </div>
             `;
         }).join('');
+
+        // Countdown to next compounding
+        const timerEl = document.getElementById('loan-compound-timer');
+        if (this.game.gameState.loans.length > 0 && timerEl) {
+            // Find soonest next compounding
+            const now = Date.now();
+            const nextCompoundMs = Math.min(...this.game.gameState.loans.map(loan => {
+                const intervalMs = 900000; // 15 min
+                const elapsed = now - loan.lastInterestApplied;
+                return Math.max(0, intervalMs - elapsed);
+            }));
+            const minLeft = Math.floor(nextCompoundMs / 60000);
+            const secLeft = Math.floor((nextCompoundMs % 60000) / 1000);
+            timerEl.textContent = `Next interest compounding in: ${minLeft}m ${secLeft}s`;
+        } else if (timerEl) {
+            timerEl.textContent = '';
+        }
     }
 }
