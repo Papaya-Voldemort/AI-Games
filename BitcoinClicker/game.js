@@ -2,7 +2,7 @@
 
 class BitcoinClickerGame {
     constructor() {
-    this.gameState = this.createDefaultState();
+        this.gameState = this.createDefaultState();
         this.lastUpdate = Date.now();
         this.autosaveInterval = null;
         this.gameLoopInterval = null;
@@ -11,6 +11,11 @@ class BitcoinClickerGame {
         setInterval(() => {
             this.checkUnlocks();
         }, 1000);
+
+            // Live stats update every second
+            setInterval(() => {
+                this.updateUI();
+            }, 1000);
         
         // Game configuration
         this.config = {
@@ -797,6 +802,11 @@ class BitcoinClickerGame {
             loans: [],
             autopayEnabled: false,
             autopayPercentage: 50,
+            blackMarketInventory: [],
+            blackMarketShop: [],
+            shopRotationTime: Date.now(),
+            activeBuffs: [],
+            hasHackersToolkit: false,
             
             // Owned items (count)
             hardware: {},
@@ -1288,6 +1298,11 @@ class BitcoinClickerGame {
         const research = this.getResearchMultipliers();
         power *= research.clickBonus;
         
+        // Apply black market buff multipliers
+        if (window.blackmarket) {
+            power *= window.blackmarket.getActiveMultiplier('click');
+        }
+        
         return Math.floor(power);
     }
 
@@ -1308,7 +1323,14 @@ class BitcoinClickerGame {
         // Apply research bonuses
         const research = this.getResearchMultipliers();
         hashesPerBTC *= research.conversionBonus;
-        const btcEarned = this.gameState.pendingHashes / hashesPerBTC;
+        
+        let btcEarned = this.gameState.pendingHashes / hashesPerBTC;
+        
+        // Apply black market BTC magnet buff
+        if (window.blackmarket && btcEarned > 0) {
+            btcEarned *= window.blackmarket.getActiveMultiplier('btc');
+        }
+        
         if (btcEarned > 0) {
             this.gameState.bitcoin += btcEarned;
             this.gameState.totalBTCThisRun += btcEarned;
@@ -1380,6 +1402,11 @@ class BitcoinClickerGame {
         const research = this.getResearchMultipliers();
         hashrateMultiplier *= research.hashrateBonus;
         
+        // Apply black market buff multipliers
+        if (window.blackmarket) {
+            hashrateMultiplier *= window.blackmarket.getActiveMultiplier('hashrate');
+        }
+        
         // Calculate total hashrate from all hardware
         for (const [id, count] of Object.entries(this.gameState.hardware)) {
             const hardware = this.hardwareTypes.find(h => h.id === id);
@@ -1388,8 +1415,12 @@ class BitcoinClickerGame {
             }
         }
         
-        // Apply power efficiency
-        totalHashrate *= powerEfficiency;
+        // Apply power efficiency (unless power surge is active)
+        if (window.blackmarket && window.blackmarket.hasPowerSurge()) {
+            // Unlimited power!
+        } else {
+            totalHashrate *= powerEfficiency;
+        }
         
         // Generate hashes
         const hashesGenerated = totalHashrate * deltaTime;
@@ -2180,6 +2211,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.blackmarket.updateUI();
             }
         }
+        if (e.key === 'h' && !e.repeat && game.gameState.hasHackersToolkit) {
+            window.blackmarket.startHackingMinigame();
+        }
     });
     // Save on page unload
     window.addEventListener('beforeunload', () => {
@@ -2315,8 +2349,406 @@ class Blackjack {
 class BlackMarket {
     constructor(game) {
         this.game = game;
+        
+        // Item pool for the rotating shop
+        this.itemPool = [
+            // Risk/Reward Items
+            {
+                id: 'quantum_gamble',
+                name: '⚛️ Quantum Gamble',
+                description: 'Schrödinger\'s investment. 60% chance to triple your money, 40% chance to lose it all.',
+                type: 'risk',
+                cost: 5000,
+                effect: () => {
+                    const roll = Math.random();
+                    if (roll < 0.6) {
+                        this.game.gameState.money *= 3;
+                        Utils.createNotification('Quantum Success!', 'The wave collapsed in your favor! Money tripled!', 'success');
+                    } else {
+                        this.game.gameState.money = 0;
+                        Utils.createNotification('Quantum Failure!', 'Your money evaporated into the void...', 'danger');
+                    }
+                }
+            },
+            {
+                id: 'mystery_box',
+                name: '📦 Mystery Box',
+                description: 'Could be anything! 50% BTC bonus, 30% small loss, 20% jackpot!',
+                type: 'risk',
+                cost: 10000,
+                effect: () => {
+                    const roll = Math.random();
+                    if (roll < 0.5) {
+                        const bonus = this.game.gameState.bitcoin * 0.5;
+                        this.game.gameState.bitcoin += bonus;
+                        Utils.createNotification('Mystery Box: Bonus!', `Found ${bonus.toFixed(8)} BTC inside!`, 'success');
+                    } else if (roll < 0.8) {
+                        this.game.gameState.money *= 0.7;
+                        Utils.createNotification('Mystery Box: Dud', 'Just a note saying "GOTCHA" and 30% of your money is gone.', 'warning');
+                    } else {
+                        const jackpot = this.game.gameState.bitcoin * 2;
+                        this.game.gameState.bitcoin += jackpot;
+                        Utils.createNotification('Mystery Box: JACKPOT!', `🎰 YOU HIT THE JACKPOT! +${jackpot.toFixed(8)} BTC!`, 'success');
+                    }
+                }
+            },
+            {
+                id: 'volatility_token',
+                name: '📊 Volatility Token',
+                description: 'Doubles market volatility for 2 minutes. High risk, high reward.',
+                type: 'risk',
+                cost: 15000,
+                effect: () => {
+                    const buff = {
+                        id: 'volatility',
+                        name: 'Market Volatility',
+                        icon: '📊',
+                        multiplier: 2,
+                        duration: 120000, // 2 minutes
+                        startTime: Date.now(),
+                        description: 'Market swings are doubled!'
+                    };
+                    this.game.gameState.activeBuffs.push(buff);
+                    this.game.config.marketVolatility *= 2;
+                    Utils.createNotification('Volatility Activated!', 'The market is about to get wild!', 'warning');
+                    
+                    setTimeout(() => {
+                        this.game.config.marketVolatility /= 2;
+                        this.removeBuff('volatility');
+                    }, buff.duration);
+                }
+            },
+            // Hacker's Toolkit
+            {
+                id: 'hackers_toolkit',
+                name: '💻 Hacker\'s Toolkit',
+                description: 'Press H to hack random wallets for BTC. High risk, high reward. One-time purchase.',
+                type: 'special',
+                cost: 50000,
+                permanent: true,
+                effect: () => {
+                    this.game.gameState.hasHackersToolkit = true;
+                    Utils.createNotification('Hacker\'s Toolkit Acquired!', 'Press H to start hacking. Welcome to the dark side...', 'success');
+                }
+            },
+            // Temporary Buffs
+            {
+                id: 'overclocking_chip',
+                name: '⚡ Overclocking Chip',
+                description: 'Double hashrate for 5 minutes. Your hardware is screaming.',
+                type: 'buff',
+                cost: 8000,
+                effect: () => {
+                    const buff = {
+                        id: 'overclock',
+                        name: 'Overclocked',
+                        icon: '⚡',
+                        multiplier: 2,
+                        duration: 300000, // 5 minutes
+                        startTime: Date.now(),
+                        description: 'Hashrate x2'
+                    };
+                    this.game.gameState.activeBuffs.push(buff);
+                    Utils.createNotification('Overclocked!', 'Your hardware is running HOT! Hashrate x2 for 5 min', 'success');
+                    
+                    setTimeout(() => {
+                        this.removeBuff('overclock');
+                        Utils.createNotification('Overclock Expired', 'Hardware returning to normal temps...', 'info');
+                    }, buff.duration);
+                }
+            },
+            {
+                id: 'golden_touch',
+                name: '✨ Golden Touch',
+                description: 'Every click gives 10x hashes for 3 minutes.',
+                type: 'buff',
+                cost: 12000,
+                effect: () => {
+                    const buff = {
+                        id: 'golden_touch',
+                        name: 'Golden Touch',
+                        icon: '✨',
+                        multiplier: 10,
+                        duration: 180000, // 3 minutes
+                        startTime: Date.now(),
+                        description: 'Click power x10'
+                    };
+                    this.game.gameState.activeBuffs.push(buff);
+                    Utils.createNotification('Golden Touch!', 'Your clicks are LEGENDARY! x10 for 3 min', 'success');
+                    
+                    setTimeout(() => {
+                        this.removeBuff('golden_touch');
+                        Utils.createNotification('Golden Touch Faded', 'Back to mortal clicking...', 'info');
+                    }, buff.duration);
+                }
+            },
+            {
+                id: 'time_warp',
+                name: '⏰ Time Warp',
+                description: 'Simulate 10 minutes of offline progress instantly.',
+                type: 'buff',
+                cost: 20000,
+                effect: () => {
+                    const offlineTime = 10 * 60; // 10 minutes in seconds
+                    this.game.processOfflineProgress(offlineTime);
+                    Utils.createNotification('Time Warp!', 'You just skipped 10 minutes into the future!', 'success');
+                }
+            },
+            {
+                id: 'focus_serum',
+                name: '🧪 Focus Serum',
+                description: 'Triple click power for 2 minutes. Feel the rush.',
+                type: 'buff',
+                cost: 7000,
+                effect: () => {
+                    const buff = {
+                        id: 'focus',
+                        name: 'Focused',
+                        icon: '🧪',
+                        multiplier: 3,
+                        duration: 120000, // 2 minutes
+                        startTime: Date.now(),
+                        description: 'Click power x3'
+                    };
+                    this.game.gameState.activeBuffs.push(buff);
+                    Utils.createNotification('Focus Activated!', 'Your mind is razor sharp! Click power x3', 'success');
+                    
+                    setTimeout(() => {
+                        this.removeBuff('focus');
+                        Utils.createNotification('Focus Worn Off', 'The serum has faded...', 'info');
+                    }, buff.duration);
+                }
+            },
+            {
+                id: 'btc_magnet',
+                name: '🧲 BTC Magnet',
+                description: 'Attracts Bitcoin. +50% BTC/s for 4 minutes.',
+                type: 'buff',
+                cost: 18000,
+                effect: () => {
+                    const buff = {
+                        id: 'btc_magnet',
+                        name: 'BTC Magnet',
+                        icon: '🧲',
+                        multiplier: 1.5,
+                        duration: 240000, // 4 minutes
+                        startTime: Date.now(),
+                        description: 'BTC generation +50%'
+                    };
+                    this.game.gameState.activeBuffs.push(buff);
+                    Utils.createNotification('BTC Magnet Active!', 'Bitcoin is magnetically drawn to you! +50%', 'success');
+                    
+                    setTimeout(() => {
+                        this.removeBuff('btc_magnet');
+                        Utils.createNotification('Magnet Deactivated', 'The magnetic field has collapsed.', 'info');
+                    }, buff.duration);
+                }
+            },
+            {
+                id: 'power_surge',
+                name: '⚡ Power Surge',
+                description: 'Infinite power for 5 minutes. No power restrictions!',
+                type: 'buff',
+                cost: 25000,
+                effect: () => {
+                    const buff = {
+                        id: 'power_surge',
+                        name: 'Power Surge',
+                        icon: '⚡',
+                        multiplier: 1,
+                        duration: 300000, // 5 minutes
+                        startTime: Date.now(),
+                        description: 'Infinite power!'
+                    };
+                    this.game.gameState.activeBuffs.push(buff);
+                    Utils.createNotification('Power Surge!', 'Unlimited power for 5 minutes!', 'success');
+                    
+                    setTimeout(() => {
+                        this.removeBuff('power_surge');
+                        Utils.createNotification('Power Surge Ended', 'Power constraints restored.', 'info');
+                    }, buff.duration);
+                }
+            }
+        ];
+        
         this.setupUI();
         this.setupLoanProcessing();
+        this.rotateShop(); // Initial shop setup
+        
+        // Live updates
+        setInterval(() => {
+            this.updateUI();
+            this.updateBuffs();
+        }, 1000);
+        
+        // Rotate shop every 10 minutes
+        setInterval(() => {
+            this.rotateShop();
+        }, 600000); // 10 minutes
+    }
+    
+    rotateShop() {
+        // Select 4-6 random items for the shop
+        const shopSize = 4 + Math.floor(Math.random() * 3); // 4-6 items
+        const availableItems = this.itemPool.filter(item => {
+            // Exclude Hacker's Toolkit if already owned
+            if (item.id === 'hackers_toolkit' && this.game.gameState.hasHackersToolkit) {
+                return false;
+            }
+            return true;
+        });
+        
+        const shuffled = [...availableItems].sort(() => Math.random() - 0.5);
+        this.game.gameState.blackMarketShop = shuffled.slice(0, shopSize);
+        this.game.gameState.shopRotationTime = Date.now();
+        
+        Utils.createNotification('Black Market Restocked!', 'New items available. Press B to check them out.', 'info');
+        this.updateUI();
+    }
+    
+    removeBuff(buffId) {
+        const index = this.game.gameState.activeBuffs.findIndex(b => b.id === buffId);
+        if (index !== -1) {
+            this.game.gameState.activeBuffs.splice(index, 1);
+        }
+    }
+    
+    updateBuffs() {
+        const now = Date.now();
+        this.game.gameState.activeBuffs = this.game.gameState.activeBuffs.filter(buff => {
+            return (now - buff.startTime) < buff.duration;
+        });
+    }
+    
+    getActiveMultiplier(type) {
+        let multiplier = 1;
+        this.game.gameState.activeBuffs.forEach(buff => {
+            if (buff.id === 'overclock' && type === 'hashrate') multiplier *= buff.multiplier;
+            if ((buff.id === 'golden_touch' || buff.id === 'focus') && type === 'click') multiplier *= buff.multiplier;
+            if (buff.id === 'btc_magnet' && type === 'btc') multiplier *= buff.multiplier;
+        });
+        return multiplier;
+    }
+    
+    hasPowerSurge() {
+        return this.game.gameState.activeBuffs.some(buff => buff.id === 'power_surge');
+    }
+    
+    startHackingMinigame() {
+        // Create hacking overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'hacking-overlay';
+        overlay.innerHTML = `
+            <div class="hacking-terminal">
+                <div class="terminal-header">
+                    <span>💻 HACKING TERMINAL</span>
+                    <button class="terminal-close">✖</button>
+                </div>
+                <div class="terminal-content">
+                    <div class="terminal-output" id="hack-output">
+                        <p class="terminal-line">INITIALIZING WALLET SCANNER...</p>
+                        <p class="terminal-line">SEARCHING FOR VULNERABLE TARGETS...</p>
+                        <p class="terminal-line">TARGET ACQUIRED: WALLET #${Math.floor(Math.random() * 999999)}</p>
+                        <p class="terminal-line terminal-prompt">CRACK THE CODE: <span id="hack-code"></span></p>
+                    </div>
+                    <div class="terminal-input-area">
+                        <span class="prompt">></span>
+                        <input type="text" id="hack-input" class="terminal-input" maxlength="6" placeholder="Enter code...">
+                        <button id="hack-submit" class="terminal-btn">HACK</button>
+                    </div>
+                    <div class="hack-timer">
+                        Time remaining: <span id="hack-time">10</span>s
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        
+        // Generate random 6-digit code
+        const code = String(Math.floor(Math.random() * 900000) + 100000);
+        document.getElementById('hack-code').textContent = code.split('').join(' ');
+        
+        let timeLeft = 10;
+        const timer = setInterval(() => {
+            timeLeft--;
+            document.getElementById('hack-time').textContent = timeLeft;
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                this.endHack(overlay, false);
+            }
+        }, 1000);
+        
+        const input = document.getElementById('hack-input');
+        const submit = document.getElementById('hack-submit');
+        
+        const attemptHack = () => {
+            const userCode = input.value;
+            if (userCode === code) {
+                clearInterval(timer);
+                this.endHack(overlay, true);
+            } else {
+                const output = document.getElementById('hack-output');
+                output.innerHTML += `<p class="terminal-line terminal-error">INCORRECT CODE: ${userCode}</p>`;
+                output.scrollTop = output.scrollHeight;
+                input.value = '';
+            }
+        };
+        
+        submit.addEventListener('click', attemptHack);
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') attemptHack();
+        });
+        
+        overlay.querySelector('.terminal-close').addEventListener('click', () => {
+            clearInterval(timer);
+            overlay.remove();
+        });
+        
+        input.focus();
+    }
+    
+    endHack(overlay, success) {
+        const output = document.getElementById('hack-output');
+        
+        if (success) {
+            // Successful hack
+            const baseReward = this.game.gameState.bitcoin * 0.1;
+            const bonusChance = Math.random();
+            let reward = baseReward;
+            let message = 'HACK SUCCESSFUL!';
+            
+            if (bonusChance > 0.9) {
+                // 10% chance for mega bonus
+                reward = baseReward * 5;
+                message = '💎 JACKPOT WALLET FOUND!';
+                output.innerHTML += `<p class="terminal-line terminal-success">████████████████████</p>`;
+                output.innerHTML += `<p class="terminal-line terminal-success">${message}</p>`;
+                output.innerHTML += `<p class="terminal-line terminal-success">EXTRACTED ${reward.toFixed(8)} BTC!</p>`;
+                output.innerHTML += `<p class="terminal-line terminal-success">████████████████████</p>`;
+            } else if (bonusChance < 0.2) {
+                // 20% chance to get caught and pay a fine
+                const fine = this.game.gameState.money * 0.3;
+                this.game.gameState.money -= fine;
+                output.innerHTML += `<p class="terminal-line terminal-error">⚠️ WARNING: TRACE DETECTED!</p>`;
+                output.innerHTML += `<p class="terminal-line terminal-error">SECURITY ALERT TRIGGERED!</p>`;
+                output.innerHTML += `<p class="terminal-line terminal-error">PAID $${fine.toFixed(0)} IN BRIBES TO AVOID ARREST</p>`;
+                reward = 0;
+            } else {
+                output.innerHTML += `<p class="terminal-line terminal-success">✓ ${message}</p>`;
+                output.innerHTML += `<p class="terminal-line terminal-success">✓ STOLEN ${reward.toFixed(8)} BTC</p>`;
+            }
+            
+            this.game.gameState.bitcoin += reward;
+            
+        } else {
+            output.innerHTML += `<p class="terminal-line terminal-error">✗ TIME EXPIRED!</p>`;
+            output.innerHTML += `<p class="terminal-line terminal-error">✗ CONNECTION LOST</p>`;
+            output.innerHTML += `<p class="terminal-line terminal-error">✗ TRACE INITIATED... RUN!</p>`;
+        }
+        
+        setTimeout(() => {
+            overlay.remove();
+        }, 3000);
     }
 
     setupUI() {
@@ -2395,6 +2827,24 @@ class BlackMarket {
 
         this.updateUI();
     }
+    
+    buyItem(itemId) {
+        const item = this.game.gameState.blackMarketShop.find(i => i.id === itemId);
+        if (!item) return;
+        
+        if (this.game.gameState.money < item.cost) {
+            Utils.createNotification('Insufficient Funds', 'You don\'t have enough money!', 'danger');
+            return;
+        }
+        
+        this.game.gameState.money -= item.cost;
+        item.effect();
+        
+        // Remove item from shop after purchase (will reappear on next rotation)
+        this.game.gameState.blackMarketShop = this.game.gameState.blackMarketShop.filter(i => i.id !== itemId);
+        
+        this.updateUI();
+    }
 
     processLoanInterest() {
         const now = Date.now();
@@ -2459,6 +2909,84 @@ class BlackMarket {
     }
 
     updateUI() {
+        this.updateLoansUI();
+        this.updateMarketUI();
+        this.updateBuffsDisplay();
+    }
+    
+    updateBuffsDisplay() {
+        // Update active buffs display in header or create a dedicated area
+        let buffsContainer = document.getElementById('active-buffs-display');
+        if (!buffsContainer) {
+            buffsContainer = document.createElement('div');
+            buffsContainer.id = 'active-buffs-display';
+            buffsContainer.className = 'active-buffs-container';
+            const header = document.getElementById('header');
+            if (header) {
+                header.appendChild(buffsContainer);
+            }
+        }
+        
+        if (this.game.gameState.activeBuffs.length === 0) {
+            buffsContainer.innerHTML = '';
+            return;
+        }
+        
+        buffsContainer.innerHTML = '<div class="buffs-title">Active Effects:</div>' + 
+            this.game.gameState.activeBuffs.map(buff => {
+                const timeLeft = Math.max(0, buff.duration - (Date.now() - buff.startTime));
+                const seconds = Math.floor(timeLeft / 1000);
+                const minutes = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                return `
+                    <div class="buff-item">
+                        <span class="buff-icon">${buff.icon}</span>
+                        <span class="buff-name">${buff.name}</span>
+                        <span class="buff-time">${minutes}:${secs.toString().padStart(2, '0')}</span>
+                    </div>
+                `;
+            }).join('');
+    }
+    
+    updateMarketUI() {
+        const marketSection = document.querySelector('.market-section');
+        if (!marketSection) return;
+        
+        const now = Date.now();
+        const timeUntilRotation = 600000 - (now - this.game.gameState.shopRotationTime);
+        const minutes = Math.floor(timeUntilRotation / 60000);
+        const seconds = Math.floor((timeUntilRotation % 60000) / 1000);
+        
+        marketSection.innerHTML = `
+            <div class="market-header">
+                <h3>🏴‍☠️ Underground Market</h3>
+                <p class="shop-timer">Shop rotates in: ${minutes}:${seconds.toString().padStart(2, '0')}</p>
+                ${this.game.gameState.hasHackersToolkit ? '<p class="hack-hint">💻 Press H to start hacking</p>' : ''}
+            </div>
+            <div class="market-items">
+                ${this.game.gameState.blackMarketShop.map(item => {
+                    const canAfford = this.game.gameState.money >= item.cost;
+                    return `
+                        <div class="market-item ${canAfford ? 'affordable' : 'locked'}">
+                            <div class="item-header">
+                                <h4>${item.name}</h4>
+                                <span class="item-type ${item.type}">${item.type.toUpperCase()}</span>
+                            </div>
+                            <p class="item-description">${item.description}</p>
+                            <div class="item-footer">
+                                <span class="item-cost">$${item.cost.toLocaleString()}</span>
+                                <button class="buy-item-btn" onclick="window.blackmarket.buyItem('${item.id}')" ${!canAfford ? 'disabled' : ''}>
+                                    ${canAfford ? 'BUY' : 'LOCKED'}
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    }
+    
+    updateLoansUI() {
         const loansListEl = document.getElementById('active-loans-list');
         const autopayCheckbox = document.getElementById('autopay-enabled');
         const autopayPercentage = document.getElementById('autopay-percentage');
@@ -2501,10 +3029,9 @@ class BlackMarket {
         // Countdown to next compounding
         const timerEl = document.getElementById('loan-compound-timer');
         if (this.game.gameState.loans.length > 0 && timerEl) {
-            // Find soonest next compounding
             const now = Date.now();
             const nextCompoundMs = Math.min(...this.game.gameState.loans.map(loan => {
-                const intervalMs = 900000; // 15 min
+                const intervalMs = 900000;
                 const elapsed = now - loan.lastInterestApplied;
                 return Math.max(0, intervalMs - elapsed);
             }));
