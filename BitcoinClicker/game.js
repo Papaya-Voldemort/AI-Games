@@ -454,6 +454,16 @@ class BitcoinClickerGame {
         // Upgrade definitions (real-world USD prices)
         this.upgradeTypes = [
             {
+                id: 'click_power0',
+                name: 'Bad Mouse',
+                description: 'Click slightly better with a worn-out mouse.',
+                subcategory: 'Click Power',
+                cost: 1,
+                effect: { clickMultiplier: 2 },
+                maxPurchases: 1,
+                unlocked: true
+            },
+            {
                 id: 'click_power1',
                 name: 'Better Mouse',
                 description: 'Click faster with an ergonomic mouse.',
@@ -783,6 +793,11 @@ class BitcoinClickerGame {
             totalClicks: 0,
             totalPrestiges: 0,
             
+            // Black Market
+            loans: [],
+            autopayEnabled: false,
+            autopayPercentage: 50,
+            
             // Owned items (count)
             hardware: {},
             generators: {},
@@ -796,7 +811,7 @@ class BitcoinClickerGame {
             // Unlocks
             unlockedHardware: ['recycled_cpu', 'celeron_g6900', 'pentium_g7400', 'athlon_3000g', 'apple_m2', 'gpu', 'asic_early'],
             unlockedGenerators: ['city', 'solar', 'diesel'],
-            unlockedUpgrades: ['click_power1', 'hash_efficiency'],
+            unlockedUpgrades: ['click_power0', 'click_power1', 'hash_efficiency'],
             
             // Research Tree
             researchPurchased: [],
@@ -2150,12 +2165,20 @@ document.addEventListener('DOMContentLoaded', () => {
     game.init();
     window.game = game;
     window.blackjack = new Blackjack(game);
+    window.blackmarket = new BlackMarket(game);
     // Secret gambling menu toggle
     document.addEventListener('keydown', (e) => {
         if (e.key === 'g' && !e.repeat) {
             const menu = document.getElementById('gambler-menu');
             menu.classList.toggle('active');
             window.blackjack.resetUI();
+        }
+        if (e.key === 'b' && !e.repeat) {
+            const menu = document.getElementById('blackmarket-menu');
+            menu.classList.toggle('active');
+            if (menu.classList.contains('active')) {
+                window.blackmarket.updateUI();
+            }
         }
     });
     // Save on page unload
@@ -2285,5 +2308,183 @@ class Blackjack {
         if (document.getElementById('money-display')) {
             document.getElementById('money-display').textContent = `$${this.game.gameState.money.toLocaleString()}`;
         }
+    }
+}
+
+// Black Market logic
+class BlackMarket {
+    constructor(game) {
+        this.game = game;
+        this.setupUI();
+        this.setupLoanProcessing();
+    }
+
+    setupUI() {
+        // Tab switching
+        const tabBtns = document.querySelectorAll('.blackmarket-tabs .tab-btn');
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabName = btn.dataset.tab;
+                this.switchTab(tabName);
+            });
+        });
+
+        // Loan buttons
+        const loanBtns = document.querySelectorAll('.loan-btn');
+        loanBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const amount = parseFloat(btn.dataset.amount);
+                const interest = parseFloat(btn.dataset.interest);
+                this.takeLoan(amount, interest);
+            });
+        });
+
+        // Autopay settings
+        const autopayCheckbox = document.getElementById('autopay-enabled');
+        const autopayPercentage = document.getElementById('autopay-percentage');
+        
+        autopayCheckbox.addEventListener('change', (e) => {
+            this.game.gameState.autopayEnabled = e.target.checked;
+        });
+
+        autopayPercentage.addEventListener('change', (e) => {
+            this.game.gameState.autopayPercentage = Math.max(10, Math.min(100, parseFloat(e.target.value)));
+        });
+    }
+
+    setupLoanProcessing() {
+        // Process loan interest every day (in-game)
+        setInterval(() => {
+            this.processLoanInterest();
+        }, 60000); // Check every minute for demo purposes (change to longer for production)
+    }
+
+    switchTab(tabName) {
+        // Update buttons
+        document.querySelectorAll('.blackmarket-tabs .tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tabName);
+        });
+
+        // Update content
+        document.querySelectorAll('.blackmarket-content .tab-content').forEach(content => {
+            content.classList.toggle('active', content.id === `${tabName}-tab`);
+        });
+    }
+
+    takeLoan(amount, interestRate) {
+        const loan = {
+            id: Date.now(),
+            principal: amount,
+            remaining: amount,
+            interestRate: interestRate,
+            takenAt: Date.now(),
+            lastInterestApplied: Date.now()
+        };
+
+        this.game.gameState.loans.push(loan);
+        this.game.gameState.money += amount;
+
+        Utils.createNotification(
+            'Loan Approved',
+            `You received $${amount.toLocaleString()}. Don't miss the payments...`,
+            'warning'
+        );
+
+        this.updateUI();
+    }
+
+    processLoanInterest() {
+        const now = Date.now();
+        const dayInMs = 86400000; // 24 hours
+
+        this.game.gameState.loans.forEach(loan => {
+            const timeSinceLastInterest = now - loan.lastInterestApplied;
+            if (timeSinceLastInterest >= dayInMs) {
+                const daysElapsed = Math.floor(timeSinceLastInterest / dayInMs);
+                loan.remaining *= Math.pow(1 + loan.interestRate, daysElapsed);
+                loan.lastInterestApplied = now;
+
+                Utils.createNotification(
+                    'Loan Interest Applied',
+                    `Your debt grew by ${(loan.interestRate * 100).toFixed(0)}%. Now owing $${loan.remaining.toLocaleString(undefined, {maximumFractionDigits: 0})}`,
+                    'danger'
+                );
+            }
+        });
+
+        // Auto-payment processing
+        if (this.game.gameState.autopayEnabled && this.game.gameState.loans.length > 0) {
+            this.processAutopay();
+        }
+
+        this.updateUI();
+    }
+
+    processAutopay() {
+        this.game.gameState.loans.forEach((loan, index) => {
+            const paymentAmount = Math.min(
+                loan.remaining * (this.game.gameState.autopayPercentage / 100),
+                this.game.gameState.money
+            );
+
+            if (paymentAmount > 0) {
+                this.payLoan(index, paymentAmount);
+            }
+        });
+    }
+
+    payLoan(loanIndex, amount) {
+        const loan = this.game.gameState.loans[loanIndex];
+        if (!loan) return;
+
+        const actualPayment = Math.min(amount, this.game.gameState.money, loan.remaining);
+        
+        this.game.gameState.money -= actualPayment;
+        loan.remaining -= actualPayment;
+
+        if (loan.remaining <= 0.01) {
+            this.game.gameState.loans.splice(loanIndex, 1);
+            Utils.createNotification(
+                'Loan Paid Off!',
+                'One less problem to worry about.',
+                'success'
+            );
+        }
+
+        this.updateUI();
+    }
+
+    updateUI() {
+        const loansListEl = document.getElementById('active-loans-list');
+        const autopayCheckbox = document.getElementById('autopay-enabled');
+        const autopayPercentage = document.getElementById('autopay-percentage');
+
+        // Update autopay controls
+        autopayCheckbox.checked = this.game.gameState.autopayEnabled;
+        autopayPercentage.value = this.game.gameState.autopayPercentage;
+
+        if (this.game.gameState.loans.length === 0) {
+            loansListEl.innerHTML = '<p class="empty-state">No active loans. (Smart choice.)</p>';
+            return;
+        }
+
+        loansListEl.innerHTML = this.game.gameState.loans.map((loan, index) => {
+            const daysSinceTaken = Math.floor((Date.now() - loan.takenAt) / 86400000);
+            return `
+                <div class="loan-item">
+                    <div class="loan-info">
+                        <p><strong>Principal:</strong> $${loan.principal.toLocaleString()}</p>
+                        <p><strong>Remaining:</strong> $${loan.remaining.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
+                        <p><strong>Interest Rate:</strong> ${(loan.interestRate * 100).toFixed(0)}%/day</p>
+                        <p><strong>Days Active:</strong> ${daysSinceTaken}</p>
+                    </div>
+                    <div class="loan-actions">
+                        <input type="number" id="payment-${index}" placeholder="Payment amount" min="1" />
+                        <button onclick="window.blackmarket.payLoan(${index}, parseFloat(document.getElementById('payment-${index}').value) || 0)">Pay</button>
+                        <button onclick="window.blackmarket.payLoan(${index}, ${loan.remaining})">Pay in Full</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
 }
