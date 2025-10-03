@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HadleeKart - Season One</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+            color: white;
+        }
+
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        #loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.5s;
+        }
+
+        #loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        #menu-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: all;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 100;
+        }
+
+        #menu-screen.hidden {
+            display: none;
+        }
+
+        .menu-title {
+            font-size: 4em;
+            font-weight: bold;
+            margin-bottom: 40px;
+            text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .menu-button {
+            padding: 15px 40px;
+            font-size: 1.2em;
+            margin: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid white;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            pointer-events: all;
+        }
+
+        .menu-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+
+        #dialogue-screen {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+            padding: 30px;
+            pointer-events: all;
+            z-index: 200;
+        }
+
+        #dialogue-screen.hidden {
+            display: none;
+        }
+
+        .dialogue-text {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        .dialogue-speaker {
+            font-weight: bold;
+            color: #FFD700;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .dialogue-button {
+            padding: 10px 25px;
+            margin: 5px;
+            background: rgba(255, 215, 0, 0.8);
+            border: none;
+            border-radius: 5px;
+            color: #000;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .dialogue-button:hover {
+            background: rgba(255, 215, 0, 1);
+            transform: scale(1.05);
+        }
+
+        #race-hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            pointer-events: none;
+        }
+
+        .hud-element {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 20px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+            backdrop-filter: blur(5px);
+        }
+
+        #position-display {
+            font-size: 2em;
+            color: #FFD700;
+        }
+
+        #item-display {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 80px;
+            height: 80px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3em;
+            backdrop-filter: blur(5px);
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        
+        <div id="loading-screen">
+            <div class="loading-spinner"></div>
+            <h2>Loading HadleeKart...</h2>
+        </div>
+
+        <div id="menu-screen">
+            <h1 class="menu-title">🏎️ HadleeKart</h1>
+            <h2>Season One</h2>
+            <button class="menu-button" id="start-story-btn">Start Story Mode</button>
+            <button class="menu-button" id="quick-race-btn">Quick Race</button>
+            <button class="menu-button" id="settings-btn">Settings</button>
+        </div>
+
+        <div id="dialogue-screen" class="hidden">
+            <div class="dialogue-speaker" id="dialogue-speaker"></div>
+            <div class="dialogue-text" id="dialogue-text"></div>
+            <div id="dialogue-buttons"></div>
+        </div>
+
+        <div id="hud">
+            <div id="race-hud" class="hidden">
+                <div class="hud-element" id="position-display">1st / 12</div>
+                <div class="hud-element" id="lap-display">Lap 1 / 3</div>
+                <div class="hud-element" id="time-display">0:00.000</div>
+            </div>
+
+            <div id="item-display" class="hidden"></div>
+        </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

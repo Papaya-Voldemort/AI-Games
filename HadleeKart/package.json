@@ -1,0 +1,30 @@
+{
+  "name": "hadleekart",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "echo \"Tests not yet implemented\" && exit 0"
+  },
+  "keywords": [
+    "racing",
+    "3d",
+    "threejs",
+    "game"
+  ],
+  "author": "",
+  "license": "MIT",
+  "description": "A browser-based Mario Kart-style racing game built with Three.js and TypeScript",
+  "devDependencies": {
+    "@types/three": "^0.180.0",
+    "terser": "^5.44.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.8"
+  },
+  "dependencies": {
+    "cannon-es": "^0.20.0",
+    "three": "^0.180.0"
+  }
+}

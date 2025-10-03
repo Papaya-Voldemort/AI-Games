@@ -41,6 +41,38 @@ A collection of innovative games exploring artificial intelligence, consciousnes
 
 **Gameplay**: Race against intelligent AI opponents through 3 laps of intense competition. Collect and use power-ups strategically while mastering drift mechanics and racing lines. Each AI opponent has unique racing personality, from aggressive to cautious, creating dynamic and unpredictable races.
 
+### 🏎️ HadleeKart - Season One
+*A fully functional browser-based 3D Mario Kart-style racing game with an adult-oriented romantic story*
+
+**Location**: `/HadleeKart/`
+
+**Features**:
+- **Full 3D Racing**: Built with Three.js and Cannon.js physics engine
+- **12 Racers**: Player + 11 AI opponents with adaptive difficulty and rubberbanding
+- **8 Progressive Tracks**: From Sunset Circuit to Starlight Finale
+- **12 Power-Up Items**: Banana peels, shells, bombs, mushrooms, star power, lightning, shields, and more
+- **Story Mode**: Adult-oriented romantic drama spanning 8 races
+- **Characters**: Luke (player), Hadlee (love interest), Harrison (antagonist)
+- **6 Kart Configurations**: Each with unique speed, handling, and acceleration stats
+- **Save System**: Progress automatically saved to localStorage
+- **Beautiful Graphics**: PBR materials, dynamic lighting, and real-time shadows
+- **Mario Kart-Style Camera**: Smooth following camera with look-ahead
+
+**Requirements**: Node.js 18+ (for development)
+
+**Setup**:
+```bash
+cd HadleeKart
+npm install
+npm run dev
+```
+
+**Play**: Open browser at `http://localhost:3000` after running dev server
+
+**Gameplay**: Race through Season One's emotional story as Luke navigates unspoken feelings for Hadlee while dealing with Harrison's manipulation. Finish in the top 3 (out of 12 racers) to unlock the next track. Experience mature storytelling with romantic tension, emotional vulnerability, and adult themes wrapped in competitive kart racing. Use items strategically, master the tracks, and witness a love story unfold across 8 races.
+
+**Tech Stack**: TypeScript, Three.js, Cannon-es, Vite
+
 ### 🎭 Freak Out
 *A surreal interactive story where reality breaks down and nothing makes sense*
 
