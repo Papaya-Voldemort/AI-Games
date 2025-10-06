@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Street Hustle - Drug Lord Platformer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="gameContainer">
+        <!-- Title Screen -->
+        <div id="titleScreen" class="screen active">
+            <div class="title-content">
+                <h1 class="game-title">STREET HUSTLE</h1>
+                <h2 class="subtitle">RISE TO THE TOP</h2>
+                <p class="story-intro">
+                    Build your empire by selling to citizens while evading the law.<br>
+                    Use your product as power-ups to boost your stats.<br>
+                    Each police officer you face gets harder - can you survive?
+                </p>
+                <div class="title-buttons">
+                    <button id="startGame" class="hustle-button">START HUSTLING</button>
+                    <button id="showHelp" class="hustle-button secondary">CONTROLS</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Help Screen -->
+        <div id="helpScreen" class="screen">
+            <div class="help-content">
+                <h1 class="game-title">CONTROLS</h1>
+                <div class="help-sections">
+                    <div class="help-section">
+                        <h3>🎮 MOVEMENT</h3>
+                        <p><strong>A/D or Arrow Keys</strong>: Move left/right</p>
+                        <p><strong>W/Space or Up Arrow</strong>: Jump</p>
+                        <p><strong>Shift</strong>: Sprint (costs stamina)</p>
+                    </div>
+                    
+                    <div class="help-section">
+                        <h3>💊 POWER-UPS</h3>
+                        <p><strong>1</strong>: Speed Boost (increases movement speed)</p>
+                        <p><strong>2</strong>: Strength Boost (increases damage)</p>
+                        <p><strong>3</strong>: Health Boost (regenerates health)</p>
+                        <p><strong>4</strong>: Invincibility (temporary immunity)</p>
+                    </div>
+                    
+                    <div class="help-section">
+                        <h3>💰 GAMEPLAY</h3>
+                        <p><strong>Yellow NPCs</strong>: Citizens - approach to sell product</p>
+                        <p><strong>Blue NPCs</strong>: Police - defeat them or evade</p>
+                        <p><strong>Boss Battles</strong>: Increasingly difficult police officers</p>
+                        <p>Collect money to buy more product and boost your stats!</p>
+                    </div>
+                </div>
+                <div class="help-buttons">
+                    <button id="startFromHelp" class="hustle-button">START GAME</button>
+                    <button id="backToTitle" class="hustle-button secondary">BACK</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="gameScreen" class="screen">
+            <div id="gameHUD">
+                <div class="hud-top">
+                    <div class="hud-item">
+                        <span class="hud-label">HEALTH:</span>
+                        <div id="healthBar">
+                            <div id="healthFill"></div>
+                        </div>
+                    </div>
+                    <div class="hud-item">
+                        <span class="hud-label">STAMINA:</span>
+                        <div id="staminaBar">
+                            <div id="staminaFill"></div>
+                        </div>
+                    </div>
+                    <div class="hud-item">
+                        <span class="hud-label">MONEY:</span>
+                        <span id="moneyValue">$0</span>
+                    </div>
+                    <div class="hud-item">
+                        <span class="hud-label">LEVEL:</span>
+                        <span id="levelValue">1</span>
+                    </div>
+                    <div class="hud-item">
+                        <span class="hud-label">SCORE:</span>
+                        <span id="scoreValue">0</span>
+                    </div>
+                </div>
+                <div class="hud-powerups">
+                    <div class="powerup-slot" id="speedSlot">
+                        <span class="powerup-key">1</span>
+                        <span class="powerup-name">Speed</span>
+                        <span class="powerup-count" id="speedCount">3</span>
+                    </div>
+                    <div class="powerup-slot" id="strengthSlot">
+                        <span class="powerup-key">2</span>
+                        <span class="powerup-name">Strength</span>
+                        <span class="powerup-count" id="strengthCount">3</span>
+                    </div>
+                    <div class="powerup-slot" id="healthSlot">
+                        <span class="powerup-key">3</span>
+                        <span class="powerup-name">Health</span>
+                        <span class="powerup-count" id="healthCount">3</span>
+                    </div>
+                    <div class="powerup-slot" id="invincSlot">
+                        <span class="powerup-key">4</span>
+                        <span class="powerup-name">Invinc</span>
+                        <span class="powerup-count" id="invincCount">1</span>
+                    </div>
+                </div>
+            </div>
+
+            <canvas id="gameCanvas" width="1200" height="700"></canvas>
+            
+            <div id="pauseMenu" class="modal hidden">
+                <div class="modal-content">
+                    <h2>GAME PAUSED</h2>
+                    <div class="modal-buttons">
+                        <button id="resumeGame" class="hustle-button">RESUME</button>
+                        <button id="showHelpFromGame" class="hustle-button secondary">CONTROLS</button>
+                        <button id="backToMenuFromGame" class="hustle-button secondary">MAIN MENU</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="gameOverMenu" class="modal hidden">
+                <div class="modal-content">
+                    <h2>BUSTED!</h2>
+                    <div id="runStats">
+                        <p>Final Score: <span id="finalScore">0</span></p>
+                        <p>Money Earned: <span id="finalMoney">$0</span></p>
+                        <p>Level Reached: <span id="finalLevel">1</span></p>
+                        <p>Citizens Served: <span id="citizensServed">0</span></p>
+                    </div>
+                    <div class="modal-buttons">
+                        <button id="restartGame" class="hustle-button">TRY AGAIN</button>
+                        <button id="backToMenuFromGameOver" class="hustle-button secondary">MAIN MENU</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="bossWarning" class="boss-warning hidden">
+                <h2>⚠️ POLICE BOSS APPROACHING ⚠️</h2>
+                <p id="bossName">Officer Johnson</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
