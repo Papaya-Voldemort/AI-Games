@@ -1438,6 +1438,24 @@ class BitcoinClickerGame {
             this.generateHashes(timePerIteration * offlineMultiplier);
             this.convertHashes();
         }
+
+        // --- Apply loan interest for offline period ---
+        // 10% every 12 hours offline
+        const offlineLoanInterval = 43200; // 12 hours in seconds
+        const offlineLoanInterest = 0.10; // 10% per 12 hours
+        const offlineLoanIntervals = Math.floor(offlineTime / offlineLoanInterval);
+        if (offlineLoanIntervals > 0 && this.gameState.loans && this.gameState.loans.length > 0) {
+            this.gameState.loans.forEach(loan => {
+                loan.remaining *= Math.pow(1 + offlineLoanInterest, offlineLoanIntervals);
+                loan.lastInterestApplied = Date.now();
+            });
+            Utils.createNotification(
+                'Offline Loan Interest',
+                `Your loans accrued 10% interest every 12 hours offline.`,
+                'danger'
+            );
+        }
+
         // --- Offline earnings: sqrt of money per minute offline ---
         const minutesOffline = Math.floor(offlineTime / 60);
         const moneyAtLogout = this.gameState.money;
@@ -2552,7 +2570,7 @@ class BlackMarket {
     processLoanInterest() {
         const now = Date.now();
         const intervalMs = 900000; // 15 minutes
-        const interestRate = 0.10; // 10% per compounding
+        const interestRate = 0.45; // 45% per compounding (online)
 
         this.game.gameState.loans.forEach(loan => {
             const timeSinceLastInterest = now - loan.lastInterestApplied;
@@ -2563,7 +2581,7 @@ class BlackMarket {
 
                 Utils.createNotification(
                     'Loan Interest Applied',
-                    `Your debt compounded by 10% every 15 min. Now owing $${loan.remaining.toLocaleString(undefined, {maximumFractionDigits: 0})}`,
+                    `Your debt compounded by 45% every 15 min. Now owing $${loan.remaining.toLocaleString(undefined, {maximumFractionDigits: 0})}`,
                     'danger'
                 );
             }
@@ -2716,7 +2734,7 @@ class BlackMarket {
                     <div class="loan-info">
                         <p><strong>Principal:</strong> $${loan.principal.toLocaleString()}</p>
                         <p><strong>Remaining:</strong> $${loan.remaining.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
-                        <p><strong>Interest Rate:</strong> 10%/15min (compounded)</p>
+                        <p><strong>Interest Rate:</strong> <span style='color:#e00;'>45%/15min (online), 10%/12h (offline)</span></p>
                         <p><strong>Minutes Active:</strong> ${minutesActive}</p>
                         <p style="color:#ff8800;font-weight:bold;">Next compounding: ${minLeft}m ${secLeft}s</p>
                     </div>
