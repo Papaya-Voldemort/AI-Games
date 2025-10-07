@@ -12,8 +12,9 @@ class HandOfFateGame {
             level: 1,
             attack: 10,
             defense: 5,
-            inventory: [],
             deck: [],
+            hand: [],
+            discard: [],
             defending: false
         };
         
@@ -40,22 +41,17 @@ class HandOfFateGame {
         // Help screen
         document.getElementById('backToTitle').addEventListener('click', () => this.showScreen('titleScreen'));
         
-        // Game controls
-        document.getElementById('inventoryBtn').addEventListener('click', () => this.showInventory());
-        document.getElementById('deckBtn').addEventListener('click', () => this.showDeck());
-        document.getElementById('saveGame').addEventListener('click', () => this.saveGame());
-        document.getElementById('menuBtn').addEventListener('click', () => this.returnToMenu());
+    // Game controls
+    document.getElementById('deckBtn').addEventListener('click', () => this.showDeck());
+    document.getElementById('saveGame').addEventListener('click', () => this.saveGame());
+    document.getElementById('menuBtn').addEventListener('click', () => this.returnToMenu());
         
         // Panel close buttons
         document.getElementById('closeEncounter')?.addEventListener('click', () => this.closePanel('encounterPanel'));
         document.getElementById('closeInventory')?.addEventListener('click', () => this.closePanel('inventoryPanel'));
         document.getElementById('closeShop')?.addEventListener('click', () => this.closePanel('shopPanel'));
         
-        // Combat actions
-        document.getElementById('attackBtn').addEventListener('click', () => this.performAttack());
-        document.getElementById('defendBtn').addEventListener('click', () => this.performDefend());
-        document.getElementById('itemBtn').addEventListener('click', () => this.performUseItem());
-        document.getElementById('specialBtn').addEventListener('click', () => this.performSpecial());
+    // Combat actions (to be replaced with card actions)
         
         // Game over
         document.getElementById('restartGame').addEventListener('click', () => this.startNewGame());
@@ -92,10 +88,6 @@ class HandOfFateGame {
             level: 1,
             attack: 10,
             defense: 5,
-            inventory: [
-                { name: 'Health Potion', icon: '🧪', effect: 'heal', value: 30, description: 'Restores 30 health' },
-                { name: 'Health Potion', icon: '🧪', effect: 'heal', value: 30, description: 'Restores 30 health' }
-            ],
             deck: [],
             defending: false
         };
@@ -185,7 +177,17 @@ class HandOfFateGame {
             );
         }
         
-        this.player.deck = [...baseDeck];
+        // Start with 3 basic cards (example: Strike, Defend, Draw)
+        const starterCards = [
+            { type: 'card', id: 'strike', icon: '🗡️', title: 'Strike', description: 'Deal 8 damage to enemy', effect: { type: 'damage', value: 8 } },
+            { type: 'card', id: 'defend', icon: '🛡️', title: 'Defend', description: 'Block 8 damage next turn', effect: { type: 'block', value: 8 } },
+            { type: 'card', id: 'draw', icon: '🎴', title: 'Draw', description: 'Draw 2 cards', effect: { type: 'draw', value: 2 } }
+        ];
+        this.player.deck = [...starterCards];
+        // Add encounter/enemy/treasure/curse cards to deck (for now, keep as events, not hand cards)
+        // this.player.deck.push(...baseDeck); // Optionally add event cards to deck
+        this.player.hand = [];
+        this.player.discard = [];
         this.shuffleDeck();
     }
     
@@ -202,85 +204,148 @@ class HandOfFateGame {
         this.shuffleDeck();
         this.cardsRemaining = Math.min(5 + this.currentLevel, this.player.deck.length);
         this.levelComplete = false;
-        this.displayCards();
+        this.player.hand = [];
+        this.player.discard = [];
+        this.drawHand();
     }
-    
+
+    // --- New Card/Hand System ---
     displayCards() {
+        // Show hand of cards as options
         const cardsArea = document.getElementById('cardsArea');
         cardsArea.innerHTML = '';
-        
-        const numCards = Math.min(4, this.cardsRemaining);
-        
-        for (let i = 0; i < numCards; i++) {
-            const card = this.createCard(true);
-            cardsArea.appendChild(card);
-        }
-        
+        this.player.hand.forEach((cardData, idx) => {
+            const cardDiv = this.createPlayableCard(cardData, idx);
+            cardsArea.appendChild(cardDiv);
+        });
         this.updateUI();
+
+        // If hand is empty and deck is not, auto draw
+        if (this.player.hand.length === 0 && this.player.deck.length > 0) {
+            this.drawHand();
+        }
     }
-    
-    createCard(faceDown = false) {
+
+    drawHand() {
+        // Draw up to 4 cards from deck, refill from discard if needed
+        while (this.player.hand.length < 4 && (this.player.deck.length > 0 || this.player.discard.length > 0)) {
+            if (this.player.deck.length === 0 && this.player.discard.length > 0) {
+                // Reshuffle discard into deck
+                this.player.deck = this.player.discard;
+                this.player.discard = [];
+                this.shuffleDeck();
+            }
+            if (this.player.deck.length > 0) {
+                this.player.hand.push(this.player.deck.shift());
+            }
+        }
+        this.displayCards();
+    }
+
+    createPlayableCard(cardData, idx) {
         const cardDiv = document.createElement('div');
         cardDiv.className = 'card';
-        
-        if (faceDown) {
-            cardDiv.classList.add('face-down');
-            cardDiv.innerHTML = `
-                <div class="card-icon">🎴</div>
-                <div class="card-title">???</div>
-                <div class="card-type">Draw Card</div>
-            `;
-            cardDiv.addEventListener('click', () => this.drawCard(cardDiv));
-        }
-        
-        return cardDiv;
-    }
-    
-    drawCard(cardElement) {
-        if (this.gameState !== 'playing') return;
-        
-        this.cardsRemaining--;
-        
-        // Get random card from deck
-        const cardIndex = Math.floor(Math.random() * this.player.deck.length);
-        const cardData = this.player.deck[cardIndex];
-        
-        // Reveal card
-        cardElement.classList.remove('face-down');
-        cardElement.classList.add(cardData.type);
-        cardElement.innerHTML = `
+        cardDiv.innerHTML = `
             <div class="card-icon">${cardData.icon}</div>
             <div class="card-title">${cardData.title}</div>
-            <div class="card-type">${cardData.type}</div>
+            <div class="card-type">${cardData.description || cardData.type}</div>
         `;
-        
-        // Trigger card effect after animation
-        setTimeout(() => {
-            cardElement.remove();
-            this.triggerCardEffect(cardData);
-        }, 1000);
+        cardDiv.addEventListener('click', () => this.playCard(idx));
+        return cardDiv;
     }
-    
-    triggerCardEffect(cardData) {
-        switch (cardData.type) {
-            case 'encounter':
-                this.startEncounter(cardData);
-                break;
-            case 'enemy':
-                this.startCombat(cardData);
-                break;
-            case 'treasure':
-                this.receiveTreasure(cardData);
-                break;
-            case 'curse':
-                this.applyCurse(cardData);
-                break;
+
+    playCard(idx) {
+        // Play card from hand, apply effect, then discard unless otherwise specified
+        const card = this.player.hand[idx];
+        if (!card) return;
+        this.applyCardEffect(card);
+        // Remove from hand
+        this.player.hand.splice(idx, 1);
+        // Discard unless card says otherwise
+        if (!card.effect || !card.effect.exile) {
+            this.player.discard.push(card);
         }
-        
-        // Check if level complete
-        if (this.cardsRemaining === 0 && !this.levelComplete) {
-            this.completeLevel();
+        // Enforce deck size limit (30)
+        this.enforceDeckLimit();
+        // Draw up to 4 if possible
+        setTimeout(() => this.drawHand(), 500);
+    }
+
+    applyCardEffect(card) {
+        if (!card.effect) return;
+        if (this.gameState === 'combat' && this.currentEnemy) {
+            switch (card.effect.type) {
+                case 'damage':
+                    this.currentEnemy.health -= card.effect.value;
+                    this.logCombat(`<span class="damage">You deal ${card.effect.value} damage!</span>`);
+                    this.updateCombatUI();
+                    if (this.currentEnemy.health <= 0) {
+                        this.winCombat();
+                        return;
+                    }
+                    setTimeout(() => this.enemyTurn(), 800);
+                    break;
+                case 'block':
+                    this.player.defending = true;
+                    this.logCombat('You take a defensive stance!');
+                    setTimeout(() => this.enemyTurn(), 800);
+                    break;
+                case 'draw':
+                    this.logCombat(`Draw ${card.effect.value} more cards!`);
+                    for (let i = 0; i < card.effect.value; i++) {
+                        if (this.player.deck.length === 0 && this.player.discard.length > 0) {
+                            this.player.deck = this.player.discard;
+                            this.player.discard = [];
+                            this.shuffleDeck();
+                        }
+                        if (this.player.deck.length > 0 && this.player.hand.length < 4) {
+                            this.player.hand.push(this.player.deck.shift());
+                        }
+                    }
+                    setTimeout(() => this.enemyTurn(), 800);
+                    break;
+                // Add more combat card effects as needed
+            }
+        } else {
+            // Non-combat card effects (exploration, healing, etc.)
+            switch (card.effect.type) {
+                case 'heal':
+                    this.healPlayer(card.effect.value);
+                    this.showMessage(`Healed for ${card.effect.value} HP!`);
+                    break;
+                case 'gold':
+                    this.player.gold += card.effect.value;
+                    this.showMessage(`Gained ${card.effect.value} gold!`);
+                    break;
+                case 'draw':
+                    this.showMessage(`Draw ${card.effect.value} more cards!`);
+                    for (let i = 0; i < card.effect.value; i++) {
+                        if (this.player.deck.length === 0 && this.player.discard.length > 0) {
+                            this.player.deck = this.player.discard;
+                            this.player.discard = [];
+                            this.shuffleDeck();
+                        }
+                        if (this.player.deck.length > 0 && this.player.hand.length < 4) {
+                            this.player.hand.push(this.player.deck.shift());
+                        }
+                    }
+                    break;
+                // Add more non-combat card effects as needed
+            }
         }
+    }
+
+    winCombat() {
+        this.logCombat(`<span class="critical">Victory! ${this.currentEnemy.name} defeated!</span>`);
+        this.player.gold += this.currentEnemy.goldReward;
+        this.player.fame += this.currentEnemy.fameReward;
+        this.logCombat(`<span class="heal">Gained ${this.currentEnemy.goldReward} gold and ${this.currentEnemy.fameReward} fame!</span>`);
+        setTimeout(() => {
+            this.closePanel('combatPanel');
+            this.gameState = 'playing';
+            this.currentEnemy = null;
+            this.displayCards();
+        }, 2000);
     }
     
     // Encounters
@@ -361,121 +426,27 @@ class HandOfFateGame {
     makeChoice(choice) {
         this.closePanel('encounterPanel');
         
-        switch (choice.effect) {
-            case 'buyPotion':
-                this.player.gold -= 20;
-                this.player.inventory.push({ 
-                    name: 'Health Potion', 
-                    icon: '🧪', 
-                    effect: 'heal', 
-                    value: 30,
-                    description: 'Restores 30 health'
-                });
-                this.showMessage('Purchased Health Potion!');
-                break;
-                
-            case 'buyAttack':
-                this.player.gold -= 50;
-                this.player.attack += 5;
-                this.showMessage('Attack increased by 5!');
-                break;
-                
-            case 'sellItems':
-                const goldGained = Math.floor(Math.random() * 20) + 10;
-                this.player.gold += goldGained;
-                this.showMessage(`Sold items for ${goldGained} gold!`);
-                break;
-                
-            case 'gainFame':
-                this.player.fame += 10;
-                this.showMessage('Your kindness increases your fame!');
-                break;
-                
-            case 'gainHeal':
-                this.healPlayer(15);
-                this.showMessage('The traveler shares healing herbs!');
-                break;
-                
-            case 'robTraveler':
-                this.player.gold += 30;
-                this.player.fame -= 20;
-                this.showMessage('You robbed the traveler... Fame decreased.');
-                break;
-                
-            case 'prayStrength':
-                this.player.gold -= 10;
-                this.player.attack += 3;
-                this.showMessage('The shrine blesses you with strength!');
-                break;
-                
-            case 'prayHealth':
-                this.player.gold -= 10;
-                this.healPlayer(25);
-                this.showMessage('The shrine restores your vitality!');
-                break;
-                
-            case 'offerTribute':
-                this.player.gold -= 50;
-                this.player.maxHealth += 20;
-                this.player.health = this.player.maxHealth;
-                this.player.attack += 5;
-                this.showMessage('The shrine grants you great power!');
-                break;
-                
-            case 'fightBandits':
-                this.startCombat({ id: 'bandits', icon: '🗡️', title: 'Bandits' });
-                break;
-                
-            case 'payBandits':
-                this.player.gold -= 30;
-                this.showMessage('The bandits let you pass...');
-                break;
-                
-            case 'intimidate':
-                if (this.player.fame >= 30) {
-                    this.showMessage('Your reputation scares them off!');
-                } else {
-                    this.showMessage('They laugh at you...');
-                    this.damagePlayer(10);
-                }
-                break;
-                
-            case 'flee':
-                if (Math.random() > 0.5) {
-                    this.showMessage('You escaped!');
-                } else {
-                    this.showMessage('They caught you!');
-                    this.damagePlayer(15);
-                }
-                break;
-                
-            case 'continue':
-            default:
-                this.displayCards();
-                break;
-        }
-        
+        // ...existing code...
+        // (Choices will be replaced with card-based actions in future steps)
+        this.displayCards();
         this.updateUI();
-        
-        // Continue to next card if not in combat
-        if (this.gameState !== 'combat') {
-            setTimeout(() => this.displayCards(), 1000);
-        }
     }
     
     // Combat System
     startCombat(cardData) {
         this.gameState = 'combat';
         this.currentEnemy = this.getEnemyData(cardData.id);
-        
         document.getElementById('combatTitle').textContent = `Battle: ${this.currentEnemy.name}`;
         document.getElementById('enemyName').textContent = this.currentEnemy.name;
         this.updateCombatUI();
-        
         this.clearCombatLog();
         this.logCombat(`You encounter ${this.currentEnemy.name}!`);
-        
         this.showPanel('combatPanel');
+        // Hide old combat action buttons
+        const actions = document.getElementById('combatActions');
+        if (actions) actions.style.display = 'none';
+        // Show hand of cards for combat
+        this.displayCards();
     }
     
     getEnemyData(id) {
@@ -658,17 +629,6 @@ class HandOfFateGame {
         
         this.logCombat(`<span class="heal">Gained ${this.currentEnemy.goldReward} gold and ${this.currentEnemy.fameReward} fame!</span>`);
         
-        // Random item drop
-        if (Math.random() > 0.6) {
-            const items = [
-                { name: 'Health Potion', icon: '🧪', effect: 'heal', value: 30, description: 'Restores 30 health' },
-                { name: 'Greater Health Potion', icon: '⚗️', effect: 'heal', value: 50, description: 'Restores 50 health' }
-            ];
-            const item = items[Math.floor(Math.random() * items.length)];
-            this.player.inventory.push(item);
-            this.logCombat(`<span class="heal">Found ${item.name}!</span>`);
-        }
-        
         setTimeout(() => {
             this.closePanel('combatPanel');
             this.gameState = 'playing';
@@ -819,30 +779,10 @@ class HandOfFateGame {
     }
     
     // Inventory
-    showInventory() {
-        const inventoryItems = document.getElementById('inventoryItems');
-        inventoryItems.innerHTML = '';
-        
-        if (this.player.inventory.length === 0) {
-            inventoryItems.innerHTML = '<p style="text-align: center; color: var(--text-light);">Inventory is empty</p>';
-        } else {
-            this.player.inventory.forEach((item, index) => {
-                const itemCard = document.createElement('div');
-                itemCard.className = 'item-card';
-                itemCard.innerHTML = `
-                    <div class="item-icon">${item.icon}</div>
-                    <div class="item-name">${item.name}</div>
-                    <div class="item-description">${item.description}</div>
-                `;
-                inventoryItems.appendChild(itemCard);
-            });
-        }
-        
-        this.showPanel('inventoryPanel');
-    }
+    // Inventory removed for card-based system
     
     showDeck() {
-        alert('Deck management coming soon!');
+    alert('Deck management coming soon!'); // To be implemented
     }
     
     // Game Over

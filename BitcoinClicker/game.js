@@ -1,8 +1,13 @@
+
+
 // Bitcoin Clicker - Main Game Logic
+
+const GAME_VERSION = '1.2.0'; // Update this for each new release
 
 class BitcoinClickerGame {
     constructor() {
-        this.gameState = this.createDefaultState();
+    this.gameState = this.createDefaultState();
+    this.lastPrestigedVersion = null;
         this.lastUpdate = Date.now();
         this.autosaveInterval = null;
         this.gameLoopInterval = null;
@@ -43,351 +48,8 @@ class BitcoinClickerGame {
             }
         };
         
-        // Mining hardware definitions (real-world USD prices)
-        this.hardwareTypes = [
-            {
-                id: 'recycled_cpu',
-                name: 'Recycled CPU',
-                description: 'Pulled from a dusty server in a forgotten basement. Barely alive, but still ticking.',
-                subcategory: 'CPU',
-                baseCost: 10,
-                baseHashrate: 1,
-                basePower: 15,
-                costMultiplier: 1.05,
-                unlocked: true
-            },
-            {
-                id: 'celeron_g6900',
-                name: 'Celeron G6900',
-                description: 'The potato chip. Barely mines, but it’s cheap enough to throw in a junk rig.',
-                subcategory: 'CPU',
-                baseCost: 45,
-                baseHashrate: 3,
-                basePower: 40,
-                costMultiplier: 1.1,
-                unlocked: true
-            },
-            {
-                id: 'pentium_g7400',
-                name: 'Pentium Gold G7400',
-                description: 'Your trusty CPU. Slow but reliable.',
-                subcategory: 'CPU',
-                baseCost: 100,
-                baseHashrate: 10,
-                basePower: 50,
-                costMultiplier: 1.15,
-                unlocked: true
-            },
-            {
-                id: 'athlon_3000g',
-                name: 'Athlon 3000G',
-                description: 'The scrappy underdog. Cheap, cheerful, and just enough juice to boot your rig.',
-                subcategory: 'CPU',
-                baseCost: 150,
-                baseHashrate: 15,
-                basePower: 55,
-                costMultiplier: 1.15,
-                unlocked: true
-            },
-            {
-                id: 'apple_m2',
-                name: 'Apple M2',
-                description: 'Sleek and silent. Optimized for elegance, not brute force.',
-                subcategory: 'CPU',
-                baseCost: 200,
-                baseHashrate: 8,
-                basePower: 15,
-                costMultiplier: 1.15,
-                unlocked: true
-            },
-            {
-                id: 'core_i3_14100',
-                name: 'Core i3-14100',
-                description: 'The apprentice chip. Learns fast, works hard, but still needs a mentor.',
-                subcategory: 'CPU',
-                baseCost: 300,
-                baseHashrate: 24,
-                basePower: 65,
-                costMultiplier: 1.2,
-                unlocked: false,
-                requirement: { totalBTC: 0.05, hashPoints: 0 }
-            },
-            {
-                id: 'ryzen_3_5300g',
-                name: 'Ryzen 3 5300G',
-                description: 'The jack-of-all-trades. Modest power, built-in graphics, and a heart of silicon gold.',
-                subcategory: 'CPU',
-                baseCost: 400,
-                baseHashrate: 28,
-                basePower: 70,
-                costMultiplier: 1.2,
-                unlocked: false,
-                requirement: { totalBTC: 0.1, hashPoints: 0 }
-            },
-            {
-                id: 'apple_m2_pro',
-                name: 'Apple M2 Pro',
-                description: 'The artist’s muse. Paints pixels with precision, but avoids crypto chaos.',
-                subcategory: 'CPU',
-                baseCost: 600,
-                baseHashrate: 15,
-                basePower: 20,
-                costMultiplier: 1.2,
-                unlocked: false,
-                requirement: { totalBTC: 0.15, hashPoints: 0 }
-            },
-            {
-                id: 'core_i5_14400',
-                name: 'Core i5-14400',
-                description: 'Reliable mercenary. Handles most missions with ease, but not built for mining glory.',
-                subcategory: 'CPU',
-                baseCost: 800,
-                baseHashrate: 35,
-                basePower: 90,
-                costMultiplier: 1.25,
-                unlocked: false,
-                requirement: { totalBTC: 0.2, hashPoints: 0 }
-            },
-            {
-                id: 'ryzen_5_7600',
-                name: 'Ryzen 5 7600',
-                description: 'The silent assassin. Efficient, deadly in short bursts, and good at covert ops.',
-                subcategory: 'CPU',
-                baseCost: 1000,
-                baseHashrate: 40,
-                basePower: 85,
-                costMultiplier: 1.25,
-                unlocked: false,
-                requirement: { totalBTC: 0.3, hashPoints: 0 }
-            },
-            {
-                id: 'apple_m3',
-                name: 'Apple M3',
-                description: 'The philosopher chip. Thinks fast, sips power, and avoids blockchain warfare.',
-                subcategory: 'CPU',
-                baseCost: 1200,
-                baseHashrate: 25,
-                basePower: 25,
-                costMultiplier: 1.25,
-                unlocked: false,
-                requirement: { totalBTC: 0.4, hashPoints: 0 }
-            },
-            {
-                id: 'core_i7_14700k',
-                name: 'Core i7-14700K',
-                description: 'The battlefield general. Commands cores like troops—strong, strategic, and power-hungry.',
-                subcategory: 'CPU',
-                baseCost: 1500,
-                baseHashrate: 55,
-                basePower: 120,
-                costMultiplier: 1.3,
-                unlocked: false,
-                requirement: { totalBTC: 0.5, hashPoints: 0 }
-            },
-            {
-                id: 'ryzen_7_7800x3d',
-                name: 'Ryzen 7 7800X3D',
-                description: 'The gamer’s blade. Sharp, swift, and tuned for frame-perfect strikes.',
-                subcategory: 'CPU',
-                baseCost: 1800,
-                baseHashrate: 85,
-                basePower: 110,
-                costMultiplier: 1.3,
-                unlocked: false,
-                requirement: { totalBTC: 0.6, hashPoints: 0 }
-            },
-            {
-                id: 'apple_m3_pro',
-                name: 'Apple M3 Pro',
-                description: 'The virtuoso. Composes symphonies of code, but won’t touch crypto.',
-                subcategory: 'CPU',
-                baseCost: 2000,
-                baseHashrate: 30,
-                basePower: 45,
-                costMultiplier: 1.3,
-                unlocked: false,
-                requirement: { totalBTC: 0.75, hashPoints: 0 }
-            },
-            {
-                id: 'core_i9_14900k',
-                name: 'Core i9-14900K',
-                description: 'The war machine. Unleashes raw power, but guzzles watts like a mech in overdrive.',
-                subcategory: 'CPU',
-                baseCost: 2500,
-                baseHashrate: 125,
-                basePower: 150,
-                costMultiplier: 1.35,
-                unlocked: false,
-                requirement: { totalBTC: 1, hashPoints: 0 }
-            },
-            {
-                id: 'ryzen_9_9950x3d',
-                name: 'Ryzen 9 9950X3D',
-                description: 'The overlord chip. Dominates games, multitasks like a demigod, and mines with quiet menace.',
-                subcategory: 'CPU',
-                baseCost: 2800,
-                baseHashrate: 250,
-                basePower: 140,
-                costMultiplier: 1.35,
-                unlocked: false,
-                requirement: { totalBTC: 1.25, hashPoints: 0 }
-            },
-            {
-                id: 'apple_m3_max',
-                name: 'Apple M3 Max',
-                description: 'The architect of worlds. Builds empires in silence, but mining? That’s beneath its station.',
-                subcategory: 'CPU',
-                baseCost: 3000,
-                baseHashrate: 50,
-                basePower: 50,
-                costMultiplier: 1.35,
-                unlocked: false,
-                requirement: { totalBTC: 1.5, hashPoints: 0 }
-            },
-            {
-                id: 'gpu',
-                name: 'GPU Rig',
-                description: 'Graphics card mining. Much faster.',
-                subcategory: 'GPU',
-                baseCost: 400,
-                baseHashrate: 100,
-                basePower: 150,
-                costMultiplier: 1.15,
-                unlocked: true
-            },
-            {
-                id: 'asic_early',
-                name: 'Early ASIC',
-                description: 'First generation ASIC miner. Game changer.',
-                subcategory: 'ASIC',
-                baseCost: 2000,
-                baseHashrate: 1000,
-                basePower: 500,
-                costMultiplier: 1.18,
-                unlocked: true
-            },
-            {
-                id: 'asic_mid',
-                name: 'Mid-Gen ASIC',
-                description: 'Improved efficiency and hashrate.',
-                subcategory: 'ASIC',
-                baseCost: 6000,
-                baseHashrate: 8000,
-                basePower: 1200,
-                costMultiplier: 1.20,
-                unlocked: false,
-                requirement: { totalBTC: 1, hashPoints: 0 }
-            },
-            {
-                id: 'asic_modern',
-                name: 'Modern ASIC',
-                description: 'State-of-the-art mining hardware.',
-                subcategory: 'ASIC',
-                baseCost: 20000,
-                baseHashrate: 100000,
-                basePower: 3000,
-                costMultiplier: 1.22,
-                unlocked: false,
-                requirement: { totalBTC: 50, hashPoints: 0 }
-            },
-            {
-                id: 'quantum',
-                name: 'Quantum Miner',
-                description: 'Experimental quantum computing miner.',
-                subcategory: 'Other',
-                baseCost: 100000,
-                baseHashrate: 1000000,
-                basePower: 10000,
-                costMultiplier: 1.25,
-                unlocked: false,
-                requirement: { totalBTC: 1000, hashPoints: 50 }
-            },
-            // Research-unlockable hardware
-            {
-                id: 'fpga',
-                name: 'FPGA Miner',
-                description: 'Field-Programmable Gate Array. Flexible and efficient.',
-                subcategory: 'Other',
-                baseCost: 4000,
-                baseHashrate: 5000,
-                basePower: 800,
-                costMultiplier: 1.19,
-                unlocked: false,
-                requirement: { researchNode: 'unlock_fpga' }
-            },
-            {
-                id: 'asic_pro',
-                name: 'Professional ASIC',
-                description: 'High-end commercial mining hardware.',
-                subcategory: 'ASIC',
-                baseCost: 35000,
-                baseHashrate: 200000,
-                basePower: 2500,
-                costMultiplier: 1.21,
-                unlocked: false,
-                requirement: { researchNode: 'unlock_asic_pro' }
-            },
-            {
-                id: 'immersion_asic',
-                name: 'Immersion-Cooled ASIC',
-                description: 'ASICs cooled in dielectric fluid for maximum efficiency.',
-                subcategory: 'ASIC',
-                baseCost: 50000,
-                baseHashrate: 350000,
-                basePower: 2000,
-                costMultiplier: 1.22,
-                unlocked: false,
-                requirement: { researchNode: 'unlock_immersion' }
-            },
-            {
-                id: 'photonic',
-                name: 'Photonic Quantum Miner',
-                description: 'Uses light-based quantum computing for incredible speeds.',
-                subcategory: 'Other',
-                baseCost: 250000,
-                baseHashrate: 2500000,
-                basePower: 8000,
-                costMultiplier: 1.24,
-                unlocked: false,
-                requirement: { researchNode: 'unlock_photonic' }
-            },
-            {
-                id: 'nano_miner',
-                name: 'Nanoscale Miner',
-                description: 'Molecular-level mining technology.',
-                subcategory: 'Other',
-                baseCost: 500000,
-                baseHashrate: 5000000,
-                basePower: 6000,
-                costMultiplier: 1.26,
-                unlocked: false,
-                requirement: { researchNode: 'unlock_nano' }
-            },
-            {
-                id: 'dimensional',
-                name: 'Dimensional Rift Miner',
-                description: 'Harnesses computing power from parallel dimensions.',
-                subcategory: 'Other',
-                baseCost: 2000000,
-                baseHashrate: 25000000,
-                basePower: 15000,
-                costMultiplier: 1.28,
-                unlocked: false,
-                requirement: { researchNode: 'unlock_dimensional' }
-            },
-            {
-                id: 'reality_proc',
-                name: 'Reality-Bending Processor',
-                description: 'Manipulates the fabric of reality itself to mine.',
-                subcategory: 'Other',
-                baseCost: 10000000,
-                baseHashrate: 150000000,
-                basePower: 25000,
-                costMultiplier: 1.30,
-                unlocked: false,
-                requirement: { researchNode: 'unlock_reality' }
-            }
-        ];
+    // Mining hardware definitions (real-world USD prices)
+    this.hardwareTypes = hardwareTypes;
         
         // Power generator definitions (real-world USD prices)
         this.generatorTypes = [
@@ -819,7 +481,7 @@ class BitcoinClickerGame {
             marketTrendTimer: 0,
             
             // Unlocks
-            unlockedHardware: ['recycled_cpu', 'celeron_g6900', 'pentium_g7400', 'athlon_3000g', 'apple_m2', 'gpu', 'asic_early'],
+            unlockedHardware: hardwareTypes.filter(h => h.unlocked).map(h => h.id),
             unlockedGenerators: ['city', 'solar', 'diesel'],
             unlockedUpgrades: ['click_power0', 'click_power1', 'hash_efficiency'],
             
@@ -838,7 +500,8 @@ class BitcoinClickerGame {
             
             // Settings
             lastUpdate: Date.now(),
-            version: '1.1.0'
+            version: GAME_VERSION,
+            lastPrestigedVersion: null
         };
     }
 
@@ -847,23 +510,25 @@ class BitcoinClickerGame {
         const savedState = Storage.load();
         if (savedState) {
             this.gameState = { ...this.createDefaultState(), ...savedState };
-            
+            // Migrate version fields if missing
+            if (!this.gameState.version) this.gameState.version = GAME_VERSION;
+            if (!this.gameState.lastPrestigedVersion) this.gameState.lastPrestigedVersion = null;
             // Calculate offline progress
             const offlineTime = Storage.calculateOfflineProgress(this.gameState);
             if (offlineTime > 60) { // Only show if offline for more than 1 minute
                 this.processOfflineProgress(offlineTime);
             }
+        } else {
+            this.gameState.version = GAME_VERSION;
+            this.gameState.lastPrestigedVersion = null;
         }
-        
         // Initialize UI
         this.initializeUI();
         this.updateUI();
-        
         // Start game loops
         this.startGameLoop();
         this.startAutosave();
         this.startEventLoop();
-        
         // Check for unlocks
         this.checkUnlocks();
     }
@@ -887,10 +552,25 @@ class BitcoinClickerGame {
         document.getElementById('prestige-button').addEventListener('click', () => {
             this.prestige();
         });
-        
+
+        // Version-based Prestige Button
         const prestigePanel = document.getElementById('prestige-panel');
         const prestigeInfo = prestigePanel.querySelector('.prestige-info');
-        
+        if (!document.getElementById('version-prestige-btn')) {
+            // Only show if a new version is detected and not yet prestiged
+            if (this.gameState.version !== this.gameState.lastPrestigedVersion) {
+                const versionBtn = document.createElement('button');
+                versionBtn.id = 'version-prestige-btn';
+                versionBtn.className = 'prestige-btn';
+                versionBtn.textContent = `PRESTIGE FOR v${GAME_VERSION} REWARD!`;
+                versionBtn.style.marginTop = '16px';
+                versionBtn.onclick = () => {
+                    this.versionPrestige();
+                };
+                prestigeInfo.appendChild(versionBtn);
+            }
+        }
+
         // Research Tree button
         const researchBtn = document.createElement('button');
         researchBtn.id = 'research-tree-button';
@@ -901,7 +581,7 @@ class BitcoinClickerGame {
             this.showResearchTree();
         };
         prestigeInfo.appendChild(researchBtn);
-        
+
         // Add reset progress button
         if (!document.getElementById('reset-progress-btn')) {
             const resetBtn = document.createElement('button');
@@ -916,11 +596,34 @@ class BitcoinClickerGame {
             };
             prestigePanel.appendChild(resetBtn);
         }
-        
+
         // Build shop items
         this.buildHardwareShop();
         this.buildPowerShop();
         this.buildUpgradesShop();
+    }
+
+    versionPrestige() {
+        // Calculate hash points reward (generous: 10 HP per BTC, min 1)
+        const btc = this.gameState.bitcoin;
+        let reward = Math.floor(btc * 10);
+        if (reward < 1) reward = 1;
+        this.gameState.hashPoints += reward;
+        this.gameState.lastPrestigedVersion = GAME_VERSION;
+        this.gameState.version = GAME_VERSION;
+        // Reset all progress except hash points and lastPrestigedVersion
+        const keep = {
+            hashPoints: this.gameState.hashPoints,
+            lastPrestigedVersion: this.gameState.lastPrestigedVersion
+        };
+        this.gameState = { ...this.createDefaultState(), ...keep };
+        Storage.save(this.gameState);
+        this.updateUI();
+        this.checkUnlocks();
+        Utils.createNotification('Prestige Complete!', `You prestiged for v${GAME_VERSION} and earned ${reward} Hash Points!`, 'success');
+        // Remove the button after prestige
+        const btn = document.getElementById('version-prestige-btn');
+        if (btn) btn.remove();
     }
 
     hardReset() {

@@ -7,7 +7,7 @@ class Storage {
     static save(gameState) {
         try {
             const saveData = {
-                version: '1.0.0',
+                version: gameState.version || '1.0.0',
                 timestamp: Date.now(),
                 state: gameState
             };
