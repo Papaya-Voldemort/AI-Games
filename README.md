@@ -108,6 +108,25 @@ npm run dev
 
 **Story**: Navigate decaying data landscapes to recover corrupted memories and uncover the mystery behind a vanished AI civilization. Your choices and code interpretations shape both the narrative and the digital world around you.
 
+### 🎴 Hand of Fate
+*A deck-building card adventure game where your destiny is determined by the cards you draw*
+
+**Location**: `/HandOfFate/`
+
+**Features**:
+- Deck-building card mechanics with multiple card types
+- Strategic turn-based combat system
+- Resource management (health, gold, fame)
+- Dynamic encounters with meaningful choices
+- Progressive difficulty and boss battles
+- Inventory and upgrade systems
+- Save/load functionality
+- Medieval fantasy card table aesthetic
+
+**Play**: Open `HandOfFate/index.html` in a web browser
+
+**Gameplay**: Draw cards from your deck to reveal encounters, enemies, treasures, and curses. Make strategic choices during encounters, battle enemies in turn-based combat, and manage your resources wisely. Build fame through good deeds and victories, collect gold to purchase upgrades, and survive increasingly difficult levels culminating in epic boss battles. Each playthrough offers different challenges as cards are shuffled and encounters vary.
+
 ### 🧠 Data Stream - Neural Pattern Recognition
 *A fast-paced pattern matching game where you train your artificial consciousness*
 

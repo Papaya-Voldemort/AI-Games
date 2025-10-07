@@ -206,6 +206,16 @@ class GameBrowser {
                 features: ['grid-based movement', 'node hacking puzzles', 'enemy AI', 'story system', 'abilities (cloak, pulse, dash)', 'procedural levels'],
                 path: 'Terminal Velocity',
                 fullDescription: 'You are V0-LT, a rogue AI escaping deletion by infiltrating procedurally generated networks. Hack nodes, avoid enemies, and uncover the truth about your creation across 10 network layers. Features minimalist visuals, modular systems, and rich branching story.'
+            },
+            {
+                name: 'HandOfFate',
+                displayName: 'Hand of Fate',
+                icon: '🎴',
+                genre: 'adventure',
+                description: 'A deck-building card adventure game where your destiny is determined by the cards you draw',
+                features: ['deck-building', 'card encounters', 'turn-based combat', 'resource management', 'progressive difficulty', 'boss battles'],
+                path: 'HandOfFate',
+                fullDescription: 'Navigate through encounters, battle enemies, collect treasures, and survive curses in this roguelike card game experience. Draw cards to reveal challenges and opportunities as you build your deck and manage health, gold, and fame to survive increasingly difficult levels.'
             }
         ];
         

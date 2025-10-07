@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hand of Fate - Card Adventure</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="gameContainer">
+        <!-- Background -->
+        <div id="backgroundPattern"></div>
+        
+        <!-- UI Container -->
+        <div id="ui">
+            <!-- Title Screen -->
+            <div id="titleScreen" class="screen active">
+                <div class="title-content">
+                    <h1 class="game-title">HAND OF FATE</h1>
+                    <h2 class="subtitle">Your destiny lies in the cards</h2>
+                    <p class="intro-text">
+                        The Dealer awaits...<br>
+                        Will you survive the trials?<br>
+                        Will fortune favor you?<br>
+                        <span class="flavor">Or will your fate be sealed in darkness?</span>
+                    </p>
+                    <div class="title-buttons">
+                        <button id="startGame" class="game-button primary">BEGIN YOUR JOURNEY</button>
+                        <button id="continueGame" class="game-button secondary">CONTINUE</button>
+                        <button id="showHelp" class="game-button tertiary">HOW TO PLAY</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Help Screen -->
+            <div id="helpScreen" class="screen">
+                <div class="help-content">
+                    <h1 class="section-title">How to Play</h1>
+                    <div class="help-sections">
+                        <div class="help-section">
+                            <h3>🎴 THE GAME</h3>
+                            <p>Hand of Fate is a deck-building card adventure game. Navigate through encounters, make choices, battle enemies, and collect rewards. Your deck determines your fate.</p>
+                        </div>
+                        
+                        <div class="help-section">
+                            <h3>🎯 OBJECTIVE</h3>
+                            <p>Survive encounters, defeat the boss at the end of each level, and build a powerful deck. Manage your health, gold, and fame to overcome increasingly difficult challenges.</p>
+                        </div>
+                        
+                        <div class="help-section">
+                            <h3>🃏 CARDS</h3>
+                            <p><strong>Encounter Cards</strong>: Story events with choices and consequences</p>
+                            <p><strong>Enemy Cards</strong>: Combat encounters that test your might</p>
+                            <p><strong>Treasure Cards</strong>: Rewards, items, and blessings</p>
+                            <p><strong>Curse Cards</strong>: Dangerous situations and penalties</p>
+                        </div>
+                        
+                        <div class="help-section">
+                            <h3>⚔️ COMBAT</h3>
+                            <p>When you encounter an enemy, combat begins. Choose your actions wisely:</p>
+                            <ul>
+                                <li><strong>Attack</strong>: Deal damage to the enemy</li>
+                                <li><strong>Defend</strong>: Reduce incoming damage</li>
+                                <li><strong>Use Item</strong>: Consume items from your inventory</li>
+                                <li><strong>Special</strong>: Use special abilities (if available)</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="help-section">
+                            <h3>💎 RESOURCES</h3>
+                            <p><strong>Health</strong>: Your life force. Reach 0 and the game ends.</p>
+                            <p><strong>Gold</strong>: Currency for purchasing items and blessings.</p>
+                            <p><strong>Fame</strong>: Your reputation. Higher fame unlocks better rewards.</p>
+                        </div>
+                    </div>
+                    <button id="backToTitle" class="game-button">BACK</button>
+                </div>
+            </div>
+            
+            <!-- Main Game Screen -->
+            <div id="gameScreen" class="screen">
+                <div class="game-content">
+                    <!-- Player Stats -->
+                    <div id="playerStats">
+                        <div class="stat-item">
+                            <span class="stat-icon">❤️</span>
+                            <span class="stat-label">Health:</span>
+                            <div class="stat-bar">
+                                <div id="healthBar" class="stat-fill health"></div>
+                            </div>
+                            <span id="healthValue" class="stat-value">100/100</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-icon">💰</span>
+                            <span class="stat-label">Gold:</span>
+                            <span id="goldValue" class="stat-value">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-icon">⭐</span>
+                            <span class="stat-label">Fame:</span>
+                            <span id="fameValue" class="stat-value">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-icon">🎴</span>
+                            <span class="stat-label">Level:</span>
+                            <span id="levelValue" class="stat-value">1</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Card Table -->
+                    <div id="cardTable">
+                        <div id="tableMessage" class="table-message">
+                            The Dealer shuffles the cards...
+                        </div>
+                        <div id="cardsArea">
+                            <!-- Cards will be placed here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Encounter Panel -->
+                    <div id="encounterPanel" class="panel hidden">
+                        <div class="panel-header">
+                            <h2 id="encounterTitle">Encounter</h2>
+                            <button id="closeEncounter" class="close-btn">×</button>
+                        </div>
+                        <div id="encounterContent" class="panel-content">
+                            <p id="encounterText">Encounter text will appear here...</p>
+                            <div id="encounterChoices" class="choices-container">
+                                <!-- Choices will be added dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Combat Panel -->
+                    <div id="combatPanel" class="panel hidden">
+                        <div class="panel-header">
+                            <h2 id="combatTitle">Combat!</h2>
+                        </div>
+                        <div id="combatContent" class="panel-content">
+                            <div id="enemyArea">
+                                <div id="enemyInfo">
+                                    <h3 id="enemyName">Enemy</h3>
+                                    <div class="enemy-stat">
+                                        <span>Health:</span>
+                                        <div class="stat-bar enemy">
+                                            <div id="enemyHealthBar" class="stat-fill health"></div>
+                                        </div>
+                                        <span id="enemyHealthValue">0/0</span>
+                                    </div>
+                                    <div class="enemy-stat">
+                                        <span>Attack:</span>
+                                        <span id="enemyAttack">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="combatLog" class="combat-log">
+                                <p>Combat begins!</p>
+                            </div>
+                            <div id="combatActions" class="action-buttons">
+                                <button id="attackBtn" class="action-btn attack">⚔️ Attack</button>
+                                <button id="defendBtn" class="action-btn defend">🛡️ Defend</button>
+                                <button id="itemBtn" class="action-btn item">🧪 Use Item</button>
+                                <button id="specialBtn" class="action-btn special">✨ Special</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Inventory Panel -->
+                    <div id="inventoryPanel" class="panel hidden">
+                        <div class="panel-header">
+                            <h2>Inventory</h2>
+                            <button id="closeInventory" class="close-btn">×</button>
+                        </div>
+                        <div id="inventoryContent" class="panel-content">
+                            <div id="inventoryItems" class="inventory-grid">
+                                <!-- Items will be displayed here -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Shop Panel -->
+                    <div id="shopPanel" class="panel hidden">
+                        <div class="panel-header">
+                            <h2>Merchant's Wares</h2>
+                            <button id="closeShop" class="close-btn">×</button>
+                        </div>
+                        <div id="shopContent" class="panel-content">
+                            <div id="shopItems" class="shop-grid">
+                                <!-- Shop items will be displayed here -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Control Buttons -->
+                    <div id="gameControls">
+                        <button id="inventoryBtn" class="control-button">🎒 Inventory</button>
+                        <button id="deckBtn" class="control-button">🎴 Deck</button>
+                        <button id="saveGame" class="control-button">💾 Save</button>
+                        <button id="menuBtn" class="control-button danger">📋 Menu</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Game Over Screen -->
+            <div id="gameOverScreen" class="screen">
+                <div class="gameover-content">
+                    <h1 id="gameOverTitle" class="gameover-title">FATE SEALED</h1>
+                    <div id="gameOverStats" class="gameover-stats">
+                        <!-- Stats will be filled dynamically -->
+                    </div>
+                    <p id="gameOverMessage" class="gameover-message">Your journey has come to an end...</p>
+                    <div class="gameover-buttons">
+                        <button id="restartGame" class="game-button primary">TRY AGAIN</button>
+                        <button id="returnToMenu" class="game-button secondary">MAIN MENU</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
