@@ -24,7 +24,7 @@ class BitcoinClickerGame {
         
         // Game configuration
         this.config = {
-            hashesPerBTC: 10000000, // 1 million hashes = 1 BTC
+            hashesPerBTC: 100000000000, // 1e11 hashes = 1 BTC (adjusted)
             tickRate: 100, // Game updates 10 times per second
             eventCheckRate: 5000, // Check for events every 5 seconds
             
@@ -36,6 +36,9 @@ class BitcoinClickerGame {
             // Bitcoin price limits
             maxBitcoinPrice: 10000000, // Example value, adjust as needed
             lowBitcoinPrice: 90000, // Example value, adjust as needed
+
+            // Mining conversion: number of hashes required to produce 1 BTC
+            // Increased substantially to avoid early-game snowballing when using loans.
             
             // Event probabilities (per check)
             eventChances: {
@@ -2506,10 +2509,11 @@ class BlackMarket {
     }
 
     setupLoanProcessing() {
-        // Process loan interest every 15 minutes (real time)
+        // Process loan interest periodically. Run check every minute and
+        // apply compounding every hour (production).
         setInterval(() => {
             this.processLoanInterest();
-        }, 15000); // 15 seconds for demo, change to 900000 for 15 min in production
+        }, 60000); // run check every 60 seconds
     }
 
     switchTab(tabName) {
@@ -2569,8 +2573,8 @@ class BlackMarket {
 
     processLoanInterest() {
         const now = Date.now();
-        const intervalMs = 900000; // 15 minutes
-        const interestRate = 0.45; // 45% per compounding (online)
+    const intervalMs = 3600000; // 60 minutes (1 hour)
+    const interestRate = 0.20; // 20% per compounding (online)
 
         this.game.gameState.loans.forEach(loan => {
             const timeSinceLastInterest = now - loan.lastInterestApplied;
@@ -2581,7 +2585,7 @@ class BlackMarket {
 
                 Utils.createNotification(
                     'Loan Interest Applied',
-                    `Your debt compounded by 45% every 15 min. Now owing $${loan.remaining.toLocaleString(undefined, {maximumFractionDigits: 0})}`,
+                    `Your debt compounded by 20% every 1 hour. Now owing $${loan.remaining.toLocaleString(undefined, {maximumFractionDigits: 0})}`,
                     'danger'
                 );
             }
@@ -2723,7 +2727,7 @@ class BlackMarket {
 
         loansListEl.innerHTML = this.game.gameState.loans.map((loan, index) => {
             const minutesActive = Math.floor((Date.now() - loan.takenAt) / 60000);
-            const intervalMs = 900000; // 15 min
+            const intervalMs = 3600000; // 60 min (1 hour)
             const now = Date.now();
             const elapsed = now - loan.lastInterestApplied;
             const nextCompoundMs = Math.max(0, intervalMs - elapsed);
@@ -2734,7 +2738,7 @@ class BlackMarket {
                     <div class="loan-info">
                         <p><strong>Principal:</strong> $${loan.principal.toLocaleString()}</p>
                         <p><strong>Remaining:</strong> $${loan.remaining.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
-                        <p><strong>Interest Rate:</strong> <span style='color:#e00;'>45%/15min (online), 10%/12h (offline)</span></p>
+                        <p><strong>Interest Rate:</strong> <span style='color:#e00;'>20%/1h (online), 10%/12h (offline)</span></p>
                         <p><strong>Minutes Active:</strong> ${minutesActive}</p>
                         <p style="color:#ff8800;font-weight:bold;">Next compounding: ${minLeft}m ${secLeft}s</p>
                     </div>
@@ -2752,7 +2756,7 @@ class BlackMarket {
         if (this.game.gameState.loans.length > 0 && timerEl) {
             const now = Date.now();
             const nextCompoundMs = Math.min(...this.game.gameState.loans.map(loan => {
-                const intervalMs = 900000;
+                const intervalMs = 3600000;
                 const elapsed = now - loan.lastInterestApplied;
                 return Math.max(0, intervalMs - elapsed);
             }));
