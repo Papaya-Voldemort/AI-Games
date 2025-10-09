@@ -4,10 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bitcoin Clicker - Mine Your Fortune</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css" id="old-ui-css">
+    <link rel="stylesheet" href="styles_new.css" id="new-ui-css" disabled>
 </head>
 <body>
     <div id="game-container">
+        <!-- Settings Panel -->
+        <div id="settings-panel">
+            <button class="close-btn" id="close-settings">✖</button>
+            <h2>Settings</h2>
+            <div style="margin-bottom:18px;">
+                <label for="ui-style-select">UI Style:</label>
+                <select id="ui-style-select">
+                    <option value="old">Classic</option>
+                    <option value="new">Paper &amp; Ink (New)</option>
+                </select>
+            </div>
+            <p style="font-size:0.95em;color:#00bfff;">Press <b>S</b> to open/close settings at any time.</p>
+        </div>
         <!-- Header -->
         <div id="header">
             <div class="header-main">
@@ -76,24 +90,25 @@
 
             <!-- Tab Navigation -->
             <div id="tab-nav">
-                <button class="tab-button active" data-tab="hardware">⚙️ Mining Hardware</button>
-                <button class="tab-button" data-tab="power">⚡ Power Systems</button>
-                <button class="tab-button" data-tab="upgrades">🔧 Upgrades</button>
-                <button class="tab-button" data-tab="prestige">🌟 Prestige</button>
-                <button class="tab-button" data-tab="stats">📊 Stats</button>
+                <div id="tab-indicator"></div>
+                <button class="tab-button tab-hardware active" data-tab="hardware">⚙️ Mining Hardware</button>
+                <button class="tab-button tab-power" data-tab="power">⚡ Power Systems</button>
+                <button class="tab-button tab-upgrades" data-tab="upgrades">🔧 Upgrades</button>
+                <button class="tab-button tab-prestige" data-tab="prestige">🌟 Prestige</button>
+                <button class="tab-button tab-stats" data-tab="stats">📊 Stats</button>
             </div>
 
             <!-- Content Panels -->
             <div id="content-area">
                 <!-- Hardware Shop Panel -->
-                <div id="hardware-panel" class="panel active">
+                <div id="hardware-panel" class="panel tab-hardware active">
                     <h2>Mining Hardware Shop</h2>
                     <div id="hardware-categories" class="category-tabs"></div>
                     <div id="hardware-list" class="shop-list"></div>
                 </div>
 
                 <!-- Power Systems Panel -->
-                <div id="power-panel" class="panel">
+                <div id="power-panel" class="panel tab-power">
                     <h2>Power Generation</h2>
                     <p class="panel-description">Build generators to power your mining operation. Insufficient power reduces mining efficiency.</p>
                     <div id="power-categories" class="category-tabs"></div>
@@ -101,7 +116,7 @@
                 </div>
 
                 <!-- Upgrades Panel -->
-                <div id="upgrades-panel" class="panel">
+                <div id="upgrades-panel" class="panel tab-upgrades">
                     <h2>Mining Upgrades</h2>
                     <p class="panel-description">Permanent improvements to your mining operation.</p>
                     <div id="upgrades-categories" class="category-tabs"></div>
@@ -109,7 +124,7 @@
                 </div>
 
                 <!-- Prestige Panel -->
-                <div id="prestige-panel" class="panel">
+                <div id="prestige-panel" class="panel tab-prestige">
                     <h2>Prestige System</h2>
                     <div class="prestige-info">
                         <p class="prestige-description">
@@ -135,7 +150,7 @@
                 </div>
 
                 <!-- Stats Panel -->
-                <div id="stats-panel" class="panel">
+                <div id="stats-panel" class="panel tab-stats">
                     <h2>Statistics</h2>
                     <div id="stats-content" class="stats-grid"></div>
                 </div>

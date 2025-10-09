@@ -1,3 +1,69 @@
+/* Settings Panel (Classic UI) */
+/* Modern Settings Panel */
+#settings-panel {
+  background: #1e1e1e;
+  border: 1px solid #ff8c00;
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
+  color: #f0f0f0;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+  padding: 24px 28px;
+  min-width: 320px;
+  display: none;
+  font-family: 'Segoe UI', sans-serif;
+  transition: opacity 0.25s ease;
+  opacity: 0;
+}
+#settings-panel.active {
+  display: block;
+  opacity: 1;
+}
+#settings-panel h2 {
+  color: #ffa500;
+  margin-bottom: 18px;
+  font-size: 1.5em;
+  font-weight: 600;
+}
+#settings-panel label {
+  font-size: 1em;
+  color: #cccccc;
+  margin-right: 10px;
+}
+#settings-panel select {
+  background: #2a2a2a;
+  color: #ffa500;
+  border: 1.5px solid #ffa500;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 1em;
+  margin-left: 6px;
+  margin-bottom: 12px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+#settings-panel select:focus {
+  border-color: #ffcc00;
+}
+#settings-panel .close-btn {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  background: none;
+  color: #ffa500;
+  border: none;
+  font-size: 1.4em;
+  cursor: pointer;
+  text-shadow: 0 0 6px rgba(255, 165, 0, 0.5);
+  transition: color 0.2s ease;
+}
+#settings-panel .close-btn:hover {
+  color: #ffcc00;
+}
+
 /* Bitcoin Clicker - Styles */
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto+Mono:wght@300;400;700&display=swap');
 
@@ -278,6 +344,10 @@ body {
     margin-bottom: 20px;
     flex-wrap: wrap;
 }
+
+/* Hide tab indicator placeholder (used by new theme JS) to avoid layout artifacts */
+#tab-nav{ position: relative; }
+#tab-indicator{ display:none; }
 
 .tab-button {
     font-family: 'Orbitron', sans-serif;
@@ -1418,8 +1488,8 @@ body {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* Loans Tab */

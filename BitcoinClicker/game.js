@@ -1921,7 +1921,133 @@ document.addEventListener('DOMContentLoaded', () => {
     window.game = game;
     window.blackjack = new Blackjack(game);
     window.blackmarket = new BlackMarket(game);
-    // Secret gambling menu toggle
+
+    // --- UI Switch Logic ---
+    const oldCss = document.getElementById('old-ui-css');
+    const newCss = document.getElementById('new-ui-css');
+    const settingsPanel = document.getElementById('settings-panel');
+    const uiSelect = document.getElementById('ui-style-select');
+    const closeSettingsBtn = document.getElementById('close-settings');
+
+    // Helper to switch UI
+    function setUIStyle(style) {
+        if (style === 'new') {
+            oldCss.disabled = true;
+            newCss.disabled = false;
+        } else {
+            oldCss.disabled = false;
+            newCss.disabled = true;
+        }
+        uiSelect.value = style;
+        localStorage.setItem('bitcoinClickerUIStyle', style);
+    }
+
+    // Add a small fade-in class to body when switching styles for smooth transition
+    function setUIStyleWithAnimation(style) {
+        const body = document.body;
+        // trigger fade-out then switch
+        body.classList.remove('ui-style-fade-in');
+        body.classList.add('ui-style-fade-out');
+        setTimeout(() => {
+            setUIStyle(style);
+            body.classList.remove('ui-style-fade-out');
+            body.classList.add('ui-style-fade-in');
+            // remove class after animation ends
+            setTimeout(() => body.classList.remove('ui-style-fade-in'), 450);
+        }, 180);
+    }
+
+    // Load UI style from storage
+    const savedStyle = localStorage.getItem('bitcoinClickerUIStyle') || 'old';
+    setUIStyle(savedStyle);
+
+    // --- Tab Navigation Logic (new UI only) ---
+    function isNewUI() {
+        return !oldCss.disabled && newCss.disabled === false;
+    }
+    const tabNav = document.getElementById('tab-nav');
+    const tabButtons = Array.from(document.querySelectorAll('.tab-button'));
+    const panels = [
+        document.getElementById('hardware-panel'),
+        document.getElementById('power-panel'),
+        document.getElementById('upgrades-panel'),
+        document.getElementById('prestige-panel'),
+        document.getElementById('stats-panel')
+    ];
+
+    // Tab indicator movement helper
+    function moveTabIndicator(button) {
+        if (!tabIndicator || !button) return;
+        const rect = button.getBoundingClientRect();
+        const parentRect = tabNav.getBoundingClientRect();
+        const left = rect.left - parentRect.left + 8; // small padding
+        const width = Math.max(80, rect.width - 16);
+        tabIndicator.style.left = left + 'px';
+        tabIndicator.style.width = width + 'px';
+        tabIndicator.style.opacity = 1;
+    }
+    const tabIndicator = document.getElementById('tab-indicator');
+
+    function updateTabIndicator() {
+        const activeBtn = tabButtons.find(btn => btn.classList.contains('active'));
+        if (!activeBtn) return;
+        const navRect = tabNav.getBoundingClientRect();
+        const btnRect = activeBtn.getBoundingClientRect();
+        tabIndicator.style.left = (btnRect.left - navRect.left) + 'px';
+        tabIndicator.style.width = btnRect.width + 'px';
+        tabIndicator.style.background = getComputedStyle(activeBtn).backgroundImage !== 'none'
+            ? getComputedStyle(activeBtn).backgroundImage
+            : getComputedStyle(activeBtn).backgroundColor;
+    }
+
+    function switchTab(tab) {
+        tabButtons.forEach(btn => btn.classList.remove('active'));
+        panels.forEach(panel => {
+            panel.classList.remove('active', 'slide-left');
+        });
+        const btn = tabButtons.find(b => b.dataset.tab === tab);
+        const panel = document.getElementById(tab + '-panel');
+        if (btn && panel) {
+            btn.classList.add('active');
+            // Sliding animation: if moving right, slide left old, else slide right old
+            panels.forEach(p => {
+                if (p !== panel && p.classList.contains('active')) {
+                    p.classList.add('slide-left');
+                    setTimeout(() => p.classList.remove('slide-left'), 350);
+                }
+            });
+            panel.classList.add('active');
+            updateTabIndicator();
+        }
+    }
+
+    tabButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (isNewUI()) {
+                switchTab(btn.dataset.tab);
+                // visual indicator + small lift
+                moveTabIndicator(btn);
+                btn.classList.add('smooth-activate');
+                setTimeout(() => btn.classList.remove('smooth-activate'), 220);
+            }
+        });
+    });
+    window.addEventListener('resize', updateTabIndicator);
+    setTimeout(updateTabIndicator, 100); // Initial
+
+    // Settings panel toggle
+    function toggleSettingsPanel(force) {
+        if (typeof force === 'boolean') {
+            settingsPanel.classList.toggle('active', force);
+        } else {
+            settingsPanel.classList.toggle('active');
+        }
+        if (settingsPanel.classList.contains('active')) {
+            uiSelect.focus();
+        }
+    }
+
+    // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
         if (e.key === 'g' && !e.repeat) {
             const menu = document.getElementById('gambler-menu');
@@ -1938,7 +2064,29 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'h' && !e.repeat && game.gameState.hasHackersToolkit) {
             window.blackmarket.startHackingMinigame();
         }
+        if (e.key === 's' && !e.repeat) {
+            toggleSettingsPanel();
+        }
+        if (e.key === 'Escape' && settingsPanel.classList.contains('active')) {
+            toggleSettingsPanel(false);
+        }
+        // Tab switching with 1-5 keys
+        if (isNewUI() && /^[1-5]$/.test(e.key)) {
+            const idx = parseInt(e.key, 10) - 1;
+            if (tabButtons[idx]) switchTab(tabButtons[idx].dataset.tab);
+        }
     });
+
+    // UI style select
+    uiSelect.addEventListener('change', (e) => {
+        setUIStyleWithAnimation(e.target.value);
+        if (e.target.value === 'new') {
+            setTimeout(updateTabIndicator, 220);
+        }
+    });
+    // Close button
+    closeSettingsBtn.addEventListener('click', () => toggleSettingsPanel(false));
+
     // Save on page unload
     window.addEventListener('beforeunload', () => {
         game.gameState.lastUpdate = Date.now();
