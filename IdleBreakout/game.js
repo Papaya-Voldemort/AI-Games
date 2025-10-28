@@ -1016,14 +1016,18 @@ class GameManager {
     
     update(deltaTime, balls, economy) {
         // Update all bricks
-        this.bricks.forEach(brick => brick.update(deltaTime));
+        for (const brick of this.bricks) {
+            brick.update(deltaTime);
+        }
         
         // Check ball-brick collisions
-        balls.forEach(ball => {
-            if (ball.isDead) return; // Skip dead balls (Phoenix resurrection)
+        for (const ball of balls) {
+            if (ball.isDead) continue; // Skip dead balls (Phoenix resurrection)
             
-            this.bricks.forEach(brick => {
-                if (!brick.destroyed && ball.checkBrickCollision(brick)) {
+            for (const brick of this.bricks) {
+                if (brick.destroyed) continue;
+                
+                if (ball.checkBrickCollision(brick)) {
                     let damage = ball.damage;
                     
                     // Apply splash damage if ball has splash ability
@@ -1048,7 +1052,7 @@ class GameManager {
                         this.createDestructionParticles(brick.x + brick.width / 2, brick.y + brick.height / 2);
                     }
                 }
-            });
+            }
             
             // Check void zone damage
             if (ball.voidZones.length > 0) {
@@ -1059,9 +1063,9 @@ class GameManager {
             if (ball.fireTrail && ball.fireTrailParticles.length > 0) {
                 this.applyFireTrailDamage(ball, economy);
             }
-        });
+        }
         
-        // Remove destroyed bricks
+        // Remove destroyed bricks (more efficient with filter)
         this.bricks = this.bricks.filter(brick => !brick.destroyed);
         
         // Check level completion
@@ -1079,12 +1083,15 @@ class GameManager {
         const chainToNearby = (fromBrick) => {
             if (chainsUsed >= maxChains) return;
             
-            this.bricks.forEach(brick => {
-                if (brick.destroyed || processedBricks.has(brick)) return;
+            const fromX = fromBrick.x + fromBrick.width / 2;
+            const fromY = fromBrick.y + fromBrick.height / 2;
+            
+            for (const brick of this.bricks) {
+                if (chainsUsed >= maxChains) break; // Early exit
+                if (brick.destroyed || processedBricks.has(brick)) continue;
                 
                 const distance = Utils.distance(
-                    fromBrick.x + fromBrick.width / 2,
-                    fromBrick.y + fromBrick.height / 2,
+                    fromX, fromY,
                     brick.x + brick.width / 2,
                     brick.y + brick.height / 2
                 );
@@ -1107,7 +1114,7 @@ class GameManager {
                         chainToNearby(brick);
                     }
                 }
-            });
+            }
         };
         
         chainToNearby(sourceBrick);
@@ -1115,8 +1122,8 @@ class GameManager {
     
     applyVoidDamage(ball, economy, deltaTime) {
         ball.voidZones.forEach(zone => {
-            this.bricks.forEach(brick => {
-                if (brick.destroyed) return;
+            for (const brick of this.bricks) {
+                if (brick.destroyed) continue;
                 
                 const distance = Utils.distance(
                     zone.x, zone.y,
@@ -1137,14 +1144,14 @@ class GameManager {
                         this.createDestructionParticles(brick.x + brick.width / 2, brick.y + brick.height / 2);
                     }
                 }
-            });
+            }
         });
     }
     
     applyFireTrailDamage(ball, economy) {
-        ball.fireTrailParticles.forEach(particle => {
-            this.bricks.forEach(brick => {
-                if (brick.destroyed) return;
+        for (const particle of ball.fireTrailParticles) {
+            for (const brick of this.bricks) {
+                if (brick.destroyed) continue;
                 
                 const distance = Utils.distance(
                     particle.x, particle.y,
@@ -1169,16 +1176,20 @@ class GameManager {
     }
     
     applySplashDamage(ball, damage, economy) {
-        this.bricks.forEach(brick => {
-            if (brick.destroyed) return;
+        const ballX = ball.x;
+        const ballY = ball.y;
+        const splashRadius = ball.splashRadius;
+        
+        for (const brick of this.bricks) {
+            if (brick.destroyed) continue;
             
             const distance = Utils.distance(
-                ball.x, ball.y,
+                ballX, ballY,
                 brick.x + brick.width / 2,
                 brick.y + brick.height / 2
             );
             
-            if (distance <= ball.splashRadius) {
+            if (distance <= splashRadius) {
                 const reward = brick.takeDamage(damage);
                 if (reward.coins > 0 || reward.gold > 0) {
                     economy.addCoins(reward.coins);
@@ -1188,7 +1199,7 @@ class GameManager {
                     this.bricksDestroyed++;
                 }
             }
-        });
+        }
     }
     
     createDestructionParticles(x, y) {

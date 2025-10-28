@@ -18,10 +18,12 @@ class GameBrowser {
     init() {
         this.loadGames();
         this.setupEventListeners();
+        this.filterDebounceTimer = null;
     }
     
     setupEventListeners() {
-        this.searchInput.addEventListener('input', () => this.filterGames());
+        // Debounce search input for better performance
+        this.searchInput.addEventListener('input', () => this.debouncedFilterGames());
         this.genreFilter.addEventListener('change', () => this.filterGames());
         this.sortBy.addEventListener('change', () => this.sortAndDisplayGames());
         
@@ -32,6 +34,14 @@ class GameBrowser {
                 this.searchInput.focus();
             }
         });
+    }
+    
+    debouncedFilterGames() {
+        // Debounce filter to avoid excessive re-rendering during typing
+        clearTimeout(this.filterDebounceTimer);
+        this.filterDebounceTimer = setTimeout(() => {
+            this.filterGames();
+        }, 150); // 150ms debounce
     }
     
     async loadGames() {
@@ -422,12 +432,9 @@ async scanDirectories() {
 // Initialize the game browser when the page loads
 document.addEventListener('DOMContentLoaded', () => {
     const gameBrowser = new GameBrowser();
-    const gameDetector = new GameDetector();
     
-    // Check for new games periodically (in a real app, this might be triggered by file system events)
-    setInterval(() => {
-        gameDetector.detectNewGames();
-    }, 30000); // Check every 30 seconds
+    // Removed unnecessary polling for game detection - games are static in this repo
+    // If dynamic game detection is needed in the future, use file system events instead
 
     // Add some keyboard shortcuts help
     const helpText = document.createElement('div');
