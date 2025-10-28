@@ -1171,8 +1171,8 @@ class GameManager {
                         this.createDestructionParticles(brick.x + brick.width / 2, brick.y + brick.height / 2);
                     }
                 }
-            });
-        });
+            }
+        }
     }
     
     applySplashDamage(ball, damage, economy) {

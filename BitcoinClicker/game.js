@@ -1860,7 +1860,7 @@ class BitcoinClickerGame {
         cache.hpOnPrestige.textContent = hpOnPrestige;
         cache.hpMultiplier.textContent = this.getHashPointMultiplier().toFixed(2) + 'x';
         cache.prestigeButton.disabled = hpOnPrestige === 0;
-        }
+        
         // Update shop affordability
         this.updateShopAffordability();
     }
