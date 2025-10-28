@@ -12,15 +12,16 @@ class BitcoinClickerGame {
         this.autosaveInterval = null;
         this.gameLoopInterval = null;
         this.eventCheckInterval = null;
+        this.lastUIUpdate = 0;
+        this.uiUpdateThrottle = 1000; // Update UI max once per second
+        
+        // Cache DOM element references
+        this.domCache = {};
+        
         // Force unlock check every second
         setInterval(() => {
             this.checkUnlocks();
         }, 1000);
-
-            // Live stats update every second
-            setInterval(() => {
-                this.updateUI();
-            }, 1000);
         
         // Game configuration
         this.config = {
@@ -536,7 +537,35 @@ class BitcoinClickerGame {
         this.checkUnlocks();
     }
 
+    cacheDOMElements() {
+        // Cache all frequently accessed DOM elements
+        this.domCache = {
+            btcDisplay: document.getElementById('btc-display'),
+            moneyDisplay: document.getElementById('money-display'),
+            hpDisplay: document.getElementById('hp-display'),
+            hashrateDisplay: document.getElementById('hashrate-display'),
+            btcrateDisplay: document.getElementById('btcrate-display'),
+            powerUsed: document.getElementById('power-used'),
+            powerCapacity: document.getElementById('power-capacity'),
+            powerFill: document.getElementById('power-fill'),
+            marketRate: document.getElementById('market-rate'),
+            marketTrend: document.getElementById('market-trend'),
+            clickPowerDisplay: document.getElementById('click-power-display'),
+            pendingHashes: document.getElementById('pending-hashes'),
+            totalBtcRun: document.getElementById('total-btc-run'),
+            hpOnPrestige: document.getElementById('hp-on-prestige'),
+            hpMultiplier: document.getElementById('hp-multiplier'),
+            prestigeButton: document.getElementById('prestige-button'),
+            hardwareList: document.querySelectorAll('#hardware-list .shop-item'),
+            powerList: document.querySelectorAll('#power-list .shop-item'),
+            upgradesList: document.querySelectorAll('#upgrades-list .shop-item')
+        };
+    }
+
     initializeUI() {
+        // Initialize DOM cache for frequently accessed elements
+        this.cacheDOMElements();
+        
         // Mine button
         document.getElementById('mine-button').addEventListener('click', (e) => {
             this.handleClick(e);
@@ -1084,8 +1113,12 @@ class BitcoinClickerGame {
         // Update market
         this.updateMarket(deltaTime);
         
-        // Update UI
-        this.updateUI();
+        // Throttle UI updates to once per second max
+        const now = Date.now();
+        if (now - this.lastUIUpdate >= this.uiUpdateThrottle) {
+            this.updateUI();
+            this.lastUIUpdate = now;
+        }
     }
 
     generateHashes(deltaTime) {
@@ -1776,29 +1809,98 @@ class BitcoinClickerGame {
     }
 
     updateUI() {
+        // Use cached DOM elements
+        const cache = this.domCache;
+        
         // Update header stats
-        document.getElementById('btc-display').textContent = Utils.formatBTC(this.gameState.bitcoin);
-        document.getElementById('money-display').textContent = Utils.formatUSD(this.gameState.money);
-        document.getElementById('hp-display').textContent = this.gameState.hashPoints;
-        // Calculate rates
+        cache.btcDisplay.textContent = Utils.formatBTC(this.gameState.bitcoin);
+        cache.moneyDisplay.textContent = Utils.formatUSD(this.gameState.money);
+        cache.hpDisplay.textContent = this.gameState.hashPoints;
+        
+        // Calculate rates (extract to avoid duplication with generateHashes)
+        const { totalHashrate, hashesPerBTC } = this.calculateProductionRates();
+        cache.hashrateDisplay.textContent = Utils.formatNumber(totalHashrate);
+        
+        const btcRate = totalHashrate / hashesPerBTC;
+        cache.btcrateDisplay.textContent = Utils.formatBTC(btcRate);
+        
+        // Update power meter
+        const powerUsed = this.getTotalPowerUsed();
+        const powerCapacity = this.getTotalPowerCapacity();
+        cache.powerUsed.textContent = Utils.formatNumber(powerUsed);
+        cache.powerCapacity.textContent = Utils.formatNumber(powerCapacity);
+        const powerPercent = powerCapacity > 0 ? (powerUsed / powerCapacity) * 100 : 0;
+        cache.powerFill.style.width = Math.min(powerPercent, 100) + '%';
+        if (powerPercent > 100) {
+            cache.powerFill.classList.add('overpowered');
+        } else {
+            cache.powerFill.classList.remove('overpowered');
+        }
+        
+        // Update market
+        cache.marketRate.textContent = Utils.formatUSD(this.gameState.marketPrice);
+        cache.marketTrend.className = 'trend-' + this.gameState.marketTrend;
+        if (this.gameState.marketTrend === 'up') {
+            cache.marketTrend.textContent = '↗';
+        } else if (this.gameState.marketTrend === 'down') {
+            cache.marketTrend.textContent = '↘';
+        } else {
+            cache.marketTrend.textContent = '─';
+        }
+        
+        // Update click power display
+        cache.clickPowerDisplay.textContent = '+' + Utils.formatNumber(this.getClickPower()) + ' hash/click';
+        
+        // Update pending hashes
+        cache.pendingHashes.textContent = Utils.formatNumber(this.gameState.pendingHashes);
+        
+        // Update prestige panel
+        cache.totalBtcRun.textContent = Utils.formatBTC(this.gameState.totalBTCThisRun);
+        const hpOnPrestige = this.calculateHashPointsOnPrestige();
+        cache.hpOnPrestige.textContent = hpOnPrestige;
+        cache.hpMultiplier.textContent = this.getHashPointMultiplier().toFixed(2) + 'x';
+        cache.prestigeButton.disabled = hpOnPrestige === 0;
+        
+        // Update shop affordability
+        this.updateShopAffordability();
+    }
+
+    calculateProductionRates() {
+        // Shared calculation for both update and UI display
         const powerEfficiency = this.getPowerEfficiency();
         let totalHashrate = 0;
         let hashrateMultiplier = 1;
+        
+        // Apply hashrate upgrades
         for (const [id, count] of Object.entries(this.gameState.upgrades)) {
             const upgrade = this.upgradeTypes.find(u => u.id === id);
             if (upgrade && upgrade.effect.hashrateMultiplier) {
                 hashrateMultiplier *= Math.pow(upgrade.effect.hashrateMultiplier, count);
             }
         }
+        
         hashrateMultiplier *= this.getHashPointMultiplier();
+        
+        // Apply research bonuses
+        const research = this.getResearchMultipliers();
+        hashrateMultiplier *= research.hashrateBonus;
+        
+        // Apply black market buff multipliers
+        if (window.blackmarket) {
+            hashrateMultiplier *= window.blackmarket.getActiveMultiplier('hashrate');
+        }
+        
+        // Calculate total hashrate from all hardware
         for (const [id, count] of Object.entries(this.gameState.hardware)) {
             const hardware = this.hardwareTypes.find(h => h.id === id);
             if (hardware) {
                 totalHashrate += hardware.baseHashrate * count * hashrateMultiplier;
             }
         }
+        
         totalHashrate *= powerEfficiency;
-        document.getElementById('hashrate-display').textContent = Utils.formatNumber(totalHashrate);
+        
+        // Calculate hashes per BTC
         let hashesPerBTC = this.config.hashesPerBTC;
         for (const [id, count] of Object.entries(this.gameState.upgrades)) {
             const upgrade = this.upgradeTypes.find(u => u.id === id);
@@ -1806,87 +1908,44 @@ class BitcoinClickerGame {
                 hashesPerBTC *= Math.pow(upgrade.effect.conversionBonus, count);
             }
         }
-        const btcRate = totalHashrate / hashesPerBTC;
-        document.getElementById('btcrate-display').textContent = Utils.formatBTC(btcRate);
-        // Update power meter
-        const powerUsed = this.getTotalPowerUsed();
-        const powerCapacity = this.getTotalPowerCapacity();
-        document.getElementById('power-used').textContent = Utils.formatNumber(powerUsed);
-        document.getElementById('power-capacity').textContent = Utils.formatNumber(powerCapacity);
-        const powerFill = document.getElementById('power-fill');
-        const powerPercent = powerCapacity > 0 ? (powerUsed / powerCapacity) * 100 : 0;
-        powerFill.style.width = Math.min(powerPercent, 100) + '%';
-        if (powerPercent > 100) {
-            powerFill.classList.add('overpowered');
-        } else {
-            powerFill.classList.remove('overpowered');
-        }
-        // Update market
-        document.getElementById('market-rate').textContent = Utils.formatUSD(this.gameState.marketPrice);
-        const trendEl = document.getElementById('market-trend');
-        trendEl.className = 'trend-' + this.gameState.marketTrend;
-        if (this.gameState.marketTrend === 'up') {
-            trendEl.textContent = '↗';
-        } else if (this.gameState.marketTrend === 'down') {
-            trendEl.textContent = '↘';
-        } else {
-            trendEl.textContent = '─';
-        }
-        // Update click power display
-        document.getElementById('click-power-display').textContent = '+' + Utils.formatNumber(this.getClickPower()) + ' hash/click';
-        // Update pending hashes
-        document.getElementById('pending-hashes').textContent = Utils.formatNumber(this.gameState.pendingHashes);
-        // Update prestige panel
-        document.getElementById('total-btc-run').textContent = Utils.formatBTC(this.gameState.totalBTCThisRun);
-        document.getElementById('hp-on-prestige').textContent = this.calculateHashPointsOnPrestige();
-        document.getElementById('hp-multiplier').textContent = this.getHashPointMultiplier().toFixed(2) + 'x';
-        const prestigeBtn = document.getElementById('prestige-button');
-        if (this.calculateHashPointsOnPrestige() === 0) {
-            prestigeBtn.disabled = true;
-        } else {
-            prestigeBtn.disabled = false;
-        }
-        // Update shop affordability
-        this.updateShopAffordability();
+        
+        return { totalHashrate, hashesPerBTC };
     }
 
     updateShopAffordability() {
+        // Use cached DOM elements instead of querySelectorAll
+        const cache = this.domCache;
+        
         // Update hardware shop
-        document.querySelectorAll('#hardware-list .shop-item').forEach((item, index) => {
+        cache.hardwareList.forEach((item, index) => {
             const hardware = this.hardwareTypes.filter(h => 
                 this.gameState.unlockedHardware.includes(h.id)
             )[index];
             if (hardware) {
                 const cost = this.getHardwareCost(hardware.id);
                 const canAfford = this.gameState.money >= cost;
-                if (canAfford) {
-                    item.classList.add('affordable');
-                } else {
-                    item.classList.remove('affordable');
-                }
+                item.classList.toggle('affordable', canAfford);
                 const btn = item.querySelector('.buy-button');
                 btn.disabled = !canAfford;
             }
         });
+        
         // Update generator shop
-        document.querySelectorAll('#power-list .shop-item').forEach((item, index) => {
+        cache.powerList.forEach((item, index) => {
             const generator = this.generatorTypes.filter(g => 
                 this.gameState.unlockedGenerators.includes(g.id)
             )[index];
             if (generator) {
                 const cost = this.getGeneratorCost(generator.id);
                 const canAfford = this.gameState.money >= cost;
-                if (canAfford) {
-                    item.classList.add('affordable');
-                } else {
-                    item.classList.remove('affordable');
-                }
+                item.classList.toggle('affordable', canAfford);
                 const btn = item.querySelector('.buy-button');
                 btn.disabled = !canAfford;
             }
         });
+        
         // Update upgrades shop
-        document.querySelectorAll('#upgrades-list .shop-item').forEach((item, index) => {
+        cache.upgradesList.forEach((item, index) => {
             const upgrade = this.upgradeTypes.filter(u => 
                 this.gameState.unlockedUpgrades.includes(u.id)
             )[index];
@@ -1895,11 +1954,7 @@ class BitcoinClickerGame {
                 const maxed = upgrade.maxPurchases && owned >= upgrade.maxPurchases;
                 const cost = this.getUpgradeCost(upgrade.id);
                 const canAfford = this.gameState.money >= cost && !maxed;
-                if (canAfford) {
-                    item.classList.add('affordable');
-                } else {
-                    item.classList.remove('affordable');
-                }
+                item.classList.toggle('affordable', canAfford);
                 const btn = item.querySelector('.buy-button');
                 btn.disabled = !canAfford;
             }
